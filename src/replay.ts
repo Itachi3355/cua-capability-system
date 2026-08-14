@@ -122,6 +122,18 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
     return false;
   };
 
+  // Non-polling checkpoint evaluation against one snapshot (used when
+  // deciding where to resume after a human intervention).
+  const instantExpect = (step: Step, snap: Snapshot): boolean => {
+    if (!step.expect) return false;
+    const wantUrl = step.expect.urlContains ? substitute(step.expect.urlContains) : undefined;
+    const wantText = step.expect.textVisible ? substitute(step.expect.textVisible) : undefined;
+    const urlOk = !wantUrl || snap.url.includes(wantUrl);
+    const textOk = !wantText || snap.visibleText.includes(wantText);
+    const targetOk = !step.expect.targetVisible || !("error" in resolveDescriptor(step.expect.targetVisible, snap));
+    return urlOk && textOk && targetOk;
+  };
+
   const expectSatisfied = async (step: Step): Promise<{ ok: boolean; observed: string }> => {
     if (!step.expect) return { ok: true, observed: "" };
     const deadline = Date.now() + step.timeoutMs;
@@ -147,6 +159,7 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
   };
 
   try {
+    let jumpTo: number | null = null;
     for (let i = 0; i < artifact.steps.length; i++) {
       const step = artifact.steps[i];
       log.event("step.start", { id: step.id, action: step.action, intent: step.intent });
@@ -160,7 +173,9 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
 
       const attemptedRecoveries = new Set<string>();
       let attempts = 0;
+      let escalationsThisStep = 0;
       const MAX_STEP_ATTEMPTS = 3; // initial + recovery retry + one transient retry
+      const MAX_ESCALATIONS_PER_STEP = 2; // then hard failure — no infinite ping-pong
 
       stepLoop: while (true) {
         attempts++;
@@ -276,7 +291,8 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
             : `${step.action} on ${JSON.stringify(step.target)}`;
           const observed = r((err as Error).message);
 
-          if (opts.escalate && opts.headful) {
+          if (opts.escalate && opts.headful && escalationsThisStep < MAX_ESCALATIONS_PER_STEP) {
+            escalationsThisStep++;
             const intervention = await requestIntervention(surface, log, {
               reason: observed,
               goalOrCapability: `${artifact.name} v${artifact.version}`,
@@ -286,16 +302,40 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
               instructions: `Automation could not complete step "${step.id}" (${step.intent}). Either perform that step manually, or fix the blocking state and leave the step to automation.`,
             });
             escalations.push(...intervention.humanActions);
-            // Re-verify: if the human's manual work satisfied the step's
-            // postcondition, skip it; otherwise re-attempt it once.
-            const check = await expectSatisfied(step);
+            if (intervention.aborted) {
+              return finish({
+                status: "failure",
+                error: { stepId: step.id, expected, observed: "operator aborted the run during intervention" },
+              });
+            }
+            const allHuman = escalations.map(r);
+            // Re-verify against the live state. The human may have completed
+            // the stuck step — or worked PAST it (finished the whole flow
+            // manually). Resume at the furthest checkpoint that now holds
+            // rather than blindly re-attempting the stuck step.
+            const snapNow = await surface.snapshot();
+            const satisfiedHere = !step.expect || instantExpect(step, snapNow);
+            let resumeAfter = satisfiedHere ? i : -1;
+            if (!satisfiedHere) {
+              for (let j = artifact.steps.length - 1; j > i; j--) {
+                const later = artifact.steps[j];
+                if (later.expect && instantExpect(later, snapNow)) {
+                  resumeAfter = j;
+                  break;
+                }
+              }
+            }
             escalatedInfo = {
               reason: observed,
-              humanActions: intervention.humanActions.map(r),
-              resumedAtStep: check.ok ? artifact.steps[i + 1]?.id ?? "(end)" : step.id,
+              humanActions: allHuman,
+              resumedAtStep: resumeAfter >= 0 ? artifact.steps[resumeAfter + 1]?.id ?? "(end)" : step.id,
             };
-            if (check.ok) {
-              log.event("escalation.step_satisfied_by_human", { stepId: step.id });
+            if (resumeAfter >= 0) {
+              log.event("escalation.resumed_at_checkpoint", {
+                satisfiedStep: artifact.steps[resumeAfter].id,
+                fastForwarded: resumeAfter > i,
+              });
+              jumpTo = resumeAfter;
               break stepLoop;
             }
             attempts = 0;
@@ -305,9 +345,21 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
 
           return finish({
             status: "failure",
-            error: { stepId: step.id, expected, observed, screenshot: shotOk ? shot : undefined },
+            error: {
+              stepId: step.id,
+              expected,
+              observed:
+                escalationsThisStep >= MAX_ESCALATIONS_PER_STEP
+                  ? `${observed} (unresolved after ${escalationsThisStep} human interventions)`
+                  : observed,
+              screenshot: shotOk ? shot : undefined,
+            },
           });
         }
+      }
+      if (jumpTo !== null) {
+        i = jumpTo; // loop increment resumes at the step after the satisfied checkpoint
+        jumpTo = null;
       }
     }
 
@@ -341,6 +393,20 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
         expected: JSON.stringify(artifact.success),
         observed: r(`url=${snap.url}, text head="${snap.visibleText.slice(0, 150)}"`),
         screenshot: shot,
+      },
+    });
+  } catch (err) {
+    // Anything that escapes the per-step handling (browser window closed
+    // mid-verification, unexpected driver error) ends as a clean failure.
+    const msg = (err as Error).message ?? String(err);
+    return finish({
+      status: "failure",
+      error: {
+        stepId: "unhandled",
+        expected: "live browser session and recoverable driver state",
+        observed: msg.includes("has been closed")
+          ? "browser window was closed externally — the headful window is the takeover surface and must stay open"
+          : r(msg),
       },
     });
   } finally {

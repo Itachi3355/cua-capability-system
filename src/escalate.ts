@@ -33,6 +33,7 @@ export interface InterventionRequest {
 
 export interface InterventionResult {
   humanActions: string[];
+  aborted: boolean;
 }
 
 export async function requestIntervention(
@@ -63,22 +64,27 @@ export async function requestIntervention(
   console.log(`  Screenshot : ${req.screenshot}`);
   console.log(`  ${req.instructions}`);
   console.log("  The live browser window is now yours. When done, press ENTER");
-  console.log("  here to hand control back to the automation.");
+  console.log("  here to hand control back to the automation — or type 'abort'");
+  console.log("  and ENTER to stop the run.");
   console.log("=".repeat(70) + "\n");
 
-  await waitForEnter();
+  const line = await waitForLine();
   await surface.disableHumanCapture();
 
-  log.event("escalation.resolved", { controller: "automation", humanActions: actions.length });
-  return { humanActions: actions };
+  const aborted = line.trim().toLowerCase() === "abort";
+  log.event("escalation.resolved", {
+    controller: aborted ? "aborted" : "automation",
+    humanActions: actions.length,
+  });
+  return { humanActions: actions, aborted };
 }
 
-function waitForEnter(): Promise<void> {
+function waitForLine(): Promise<string> {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question("", () => {
+    rl.question("", (answer) => {
       rl.close();
-      resolve();
+      resolve(answer);
     });
   });
 }
