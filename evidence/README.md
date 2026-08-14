@@ -22,3 +22,8 @@ Approval-gate demonstration: replay of the risky artifact while still `draft` (e
 
 ## `replay-2026-08-14T18-45-15-028Z`
 After `approve`: replay with --allow-risky for member_id=23456 -> success, reference_number=SA-70212. Risky step s9 logged as executing under the approved+allowRisky gate.
+
+## `replay-2026-08-14T19-20-34-294Z`
+Live human escalation and handoff. The artifact is a deliberately sabotaged copy (`artifacts/_escalation_demo.json`: step s3's target renamed/re-anchored so no locator strategy can resolve it). Replay stuck at s3 -> intervention raised with capability, step, reason, URL, and screenshot; controller transferred to the human on the same live browser window. The operator's actions were captured across the handoff (set search field, click Search), the step's checkpoint was then verified as satisfied, and automation resumed at s4 and completed. Final status `escalated` with humanActions, resumedAtStep, and the extracted output.
+
+Note: earlier iterations of this demo drove three hardening changes now in the engine — navigation-proof action capture, resume-at-furthest-satisfied-checkpoint (an operator who works past the stuck step no longer causes an escalation loop), and bounded escalations per step with an operator abort channel.

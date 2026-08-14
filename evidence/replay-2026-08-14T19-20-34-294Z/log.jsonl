@@ -1,0 +1,19 @@
+{"ts":"2026-08-14T19:20:34.319Z","type":"replay.start","artifact":"lookup_member_savings_balance","version":1,"params":{"member_id":"12345"}}
+{"ts":"2026-08-14T19:20:37.227Z","type":"step.start","id":"s0","action":"navigate","intent":"Open the application entry point"}
+{"ts":"2026-08-14T19:20:37.336Z","type":"step.ok","id":"s0","attempts":1}
+{"ts":"2026-08-14T19:20:37.337Z","type":"step.start","id":"s1","action":"click","intent":"Navigate to Member Search page"}
+{"ts":"2026-08-14T19:20:37.614Z","type":"step.ok","id":"s1","attempts":1}
+{"ts":"2026-08-14T19:20:37.615Z","type":"step.start","id":"s2","action":"type","intent":"Enter member number to search"}
+{"ts":"2026-08-14T19:20:37.692Z","type":"step.ok","id":"s2","attempts":1}
+{"ts":"2026-08-14T19:20:37.693Z","type":"step.start","id":"s3","action":"click","intent":"Search for member"}
+{"ts":"2026-08-14T19:20:39.433Z","type":"escalation.raised","reason":"target not resolved: not_found: no element matched role=button name=\"Execute Query\" near=\"Query Console\"","goalOrCapability":"lookup_member_savings_balance v1","stepId":"s3","currentUrl":"http://localhost:4173/members","screenshot":"evidence\\replay-2026-08-14T19-20-34-294Z\\00-failure-s3.png","instructions":"Automation could not complete step \"s3\" (Search for member). Either perform that step manually, or fix the blocking state and leave the step to automation."}
+{"ts":"2026-08-14T19:20:46.163Z","type":"human.action","desc":"set input[text] \"12345\" = \"12345\""}
+{"ts":"2026-08-14T19:20:46.228Z","type":"human.action","desc":"click input[submit] \"Search\""}
+{"ts":"2026-08-14T19:20:52.540Z","type":"escalation.resolved","controller":"automation","humanActions":2}
+{"ts":"2026-08-14T19:20:52.545Z","type":"escalation.resumed_at_checkpoint","satisfiedStep":"s3","fastForwarded":false}
+{"ts":"2026-08-14T19:20:52.546Z","type":"step.start","id":"s4","action":"click","intent":"Open member record to view account details"}
+{"ts":"2026-08-14T19:20:52.653Z","type":"step.ok","id":"s4","attempts":1}
+{"ts":"2026-08-14T19:20:52.654Z","type":"step.start","id":"s6","action":"extract","intent":"Extract just the balance value"}
+{"ts":"2026-08-14T19:20:52.667Z","type":"extract","output":"savings_balance","value":"$4,821.77"}
+{"ts":"2026-08-14T19:20:52.667Z","type":"step.ok","id":"s6","attempts":1}
+{"ts":"2026-08-14T19:20:52.759Z","type":"replay.result","runId":"replay-2026-08-14T19-20-34-294Z","artifact":{"id":"bb7cad56-232c-409a-9cfb-d5c4f9a929b9","name":"lookup_member_savings_balance","version":1},"status":"escalated","outputs":{"savings_balance":"$4,821.77"},"escalation":{"reason":"target not resolved: not_found: no element matched role=button name=\"Execute Query\" near=\"Query Console\"","humanActions":["set input[text] \"12345\" = \"12345\"","click input[submit] \"Search\""],"resumedAtStep":"s4"},"startedAt":"2026-08-14T19:20:34.319Z","finishedAt":"2026-08-14T19:20:52.758Z","evidenceDir":"evidence\\replay-2026-08-14T19-20-34-294Z"}

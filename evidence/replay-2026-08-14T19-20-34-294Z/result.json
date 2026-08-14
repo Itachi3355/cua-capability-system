@@ -1,0 +1,23 @@
+{
+  "runId": "replay-2026-08-14T19-20-34-294Z",
+  "artifact": {
+    "id": "bb7cad56-232c-409a-9cfb-d5c4f9a929b9",
+    "name": "lookup_member_savings_balance",
+    "version": 1
+  },
+  "status": "escalated",
+  "outputs": {
+    "savings_balance": "$4,821.77"
+  },
+  "escalation": {
+    "reason": "target not resolved: not_found: no element matched role=button name=\"Execute Query\" near=\"Query Console\"",
+    "humanActions": [
+      "set input[text] \"12345\" = \"12345\"",
+      "click input[submit] \"Search\""
+    ],
+    "resumedAtStep": "s4"
+  },
+  "startedAt": "2026-08-14T19:20:34.319Z",
+  "finishedAt": "2026-08-14T19:20:52.758Z",
+  "evidenceDir": "evidence\\replay-2026-08-14T19-20-34-294Z"
+}
