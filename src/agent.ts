@@ -246,7 +246,9 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
       system,
       messages,
       tools: TOOLS,
-      tool_choice: { type: "auto" },
+      // One decision per turn: the loop answers exactly one tool_use, and a
+      // discovery step should be observe -> act anyway.
+      tool_choice: { type: "auto", disable_parallel_tool_use: true },
     });
 
     messages.push({ role: "assistant", content: response.content });

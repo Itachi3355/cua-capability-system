@@ -1,0 +1,15 @@
+{
+  "runId": "replay-2026-08-14T18-45-15-028Z",
+  "artifact": {
+    "id": "174c4a04-0b5f-40a1-8475-6901bbaafca2",
+    "name": "open_money_market_subaccount",
+    "version": 1
+  },
+  "status": "success",
+  "outputs": {
+    "reference_number": "SA-70212"
+  },
+  "startedAt": "2026-08-14T18:45:15.030Z",
+  "finishedAt": "2026-08-14T18:45:18.767Z",
+  "evidenceDir": "evidence\\replay-2026-08-14T18-45-15-028Z"
+}

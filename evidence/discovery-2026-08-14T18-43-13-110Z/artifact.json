@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "id": "174c4a04-0b5f-40a1-8475-6901bbaafca2",
+  "name": "open_money_market_subaccount",
+  "description": "Opens a new Money Market sub-account with a given nickname for a specified member and reaches the confirmation screen showing the reference number.",
+  "version": 1,
+  "createdAt": "2026-08-14T18:43:40.653Z",
+  "approval": "draft",
+  "app": {
+    "label": "Meridian CU Teller Console",
+    "baseUrl": "http://localhost:4173"
+  },
+  "params": [
+    {
+      "name": "member_id",
+      "type": "string",
+      "description": "The member number",
+      "required": true,
+      "sensitive": false
+    }
+  ],
+  "outputs": [],
+  "steps": [
+    {
+      "id": "s0",
+      "intent": "Open the application entry point",
+      "timeoutMs": 10000,
+      "action": "navigate",
+      "url": "http://localhost:4173"
+    },
+    {
+      "id": "s1",
+      "intent": "Go to Member Search",
+      "expect": {
+        "urlContains": "/members"
+      },
+      "timeoutMs": 10000,
+      "action": "click",
+      "target": {
+        "role": "link",
+        "name": "Member Search",
+        "nearText": "»",
+        "structuralPath": "html>body>table>tbody>tr:2>td>table>tbody>tr:0>td:1>a"
+      },
+      "risky": false
+    },
+    {
+      "id": "s2",
+      "intent": "Enter member id",
+      "timeoutMs": 10000,
+      "action": "type",
+      "target": {
+        "role": "textbox",
+        "name": "q",
+        "nearText": "Member # or Name:",
+        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr>td:1>input"
+      },
+      "value": "{{member_id}}",
+      "sensitive": false
+    },
+    {
+      "id": "s3",
+      "intent": "Search for member",
+      "expect": {
+        "urlContains": "/members?q={{member_id}}"
+      },
+      "timeoutMs": 10000,
+      "action": "click",
+      "target": {
+        "role": "button",
+        "name": "Search",
+        "nearText": "Member # or Name:",
+        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr>td:2>input"
+      },
+      "risky": false
+    },
+    {
+      "id": "s4",
+      "intent": "Open member record",
+      "expect": {
+        "urlContains": "/members/{{member_id}}"
+      },
+      "timeoutMs": 10000,
+      "action": "click",
+      "target": {
+        "role": "link",
+        "name": "Margaret Chen",
+        "nearText": "{{member_id}}",
+        "structuralPath": "html>body>table>tbody>tr:2>td>table>tbody>tr:1>td:1>a"
+      },
+      "risky": false
+    },
+    {
+      "id": "s5",
+      "intent": "Open sub-account creation form",
+      "expect": {
+        "urlContains": "/members/{{member_id}}/subaccount/new"
+      },
+      "timeoutMs": 10000,
+      "action": "click",
+      "target": {
+        "role": "link",
+        "name": "Open Sub-Account",
+        "nearText": "»",
+        "structuralPath": "html>body>table>tbody>tr:2>td>table:2>tbody>tr>td:1>a"
+      },
+      "risky": false
+    },
+    {
+      "id": "s6",
+      "intent": "Select Money Market product type",
+      "timeoutMs": 10000,
+      "action": "select",
+      "target": {
+        "role": "select",
+        "name": "ptype",
+        "nearText": "Product:",
+        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr:0>td:1>select"
+      },
+      "value": "Money Market"
+    },
+    {
+      "id": "s7",
+      "intent": "Enter account nickname",
+      "timeoutMs": 10000,
+      "action": "type",
+      "target": {
+        "role": "textbox",
+        "name": "nick",
+        "nearText": "Account Nickname:",
+        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr:1>td:1>input"
+      },
+      "value": "Vacation Fund",
+      "sensitive": false
+    },
+    {
+      "id": "s8",
+      "intent": "Continue to confirmation screen",
+      "expect": {
+        "urlContains": "/members/{{member_id}}/subaccount/review"
+      },
+      "timeoutMs": 10000,
+      "action": "click",
+      "target": {
+        "role": "button",
+        "name": "Continue »",
+        "nearText": "Account Nickname:",
+        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr:2>td:1>input"
+      },
+      "risky": false
+    },
+    {
+      "id": "s9",
+      "intent": "Confirm and open the sub-account",
+      "expect": {
+        "urlContains": "/members/{{member_id}}/subaccount/create"
+      },
+      "timeoutMs": 10000,
+      "action": "click",
+      "target": {
+        "role": "button",
+        "name": "Confirm and Open Account",
+        "nearText": "Confirming will open a live sub-account on the member's record.",
+        "structuralPath": "html>body>table>tbody>tr:2>td>form>input:2"
+      },
+      "risky": true
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "member_not_found",
+      "description": "Search returns no matching member record",
+      "when": {
+        "textVisible": "No members found"
+      }
+    },
+    {
+      "code": "invalid_member_id",
+      "description": "Member number format is invalid",
+      "when": {
+        "textVisible": "Invalid member number"
+      }
+    },
+    {
+      "code": "nickname_required",
+      "description": "Account nickname field left blank on submit",
+      "when": {
+        "textVisible": "Nickname is required"
+      }
+    },
+    {
+      "code": "duplicate_nickname",
+      "description": "A sub-account with this nickname already exists for the member",
+      "when": {
+        "textVisible": "An account with that nickname already exists"
+      }
+    },
+    {
+      "code": "product_unavailable",
+      "description": "Selected product type is not available for this member",
+      "when": {
+        "textVisible": "This product is not available for this member"
+      }
+    },
+    {
+      "code": "account_limit_reached",
+      "description": "Member has reached the maximum number of sub-accounts",
+      "when": {
+        "textVisible": "Maximum number of sub-accounts reached"
+      }
+    },
+    {
+      "code": "member_account_frozen",
+      "description": "Member record is frozen or restricted, preventing new account opening",
+      "when": {
+        "textVisible": "This member's account is frozen"
+      }
+    },
+    {
+      "code": "system_error",
+      "description": "Backend error occurred while creating the sub-account",
+      "when": {
+        "textVisible": "An error occurred while processing your request"
+      }
+    }
+  ],
+  "recoveries": [
+    {
+      "id": "session_expired",
+      "description": "Session expired interstitial; click Log In Again to resume",
+      "when": {
+        "textVisible": "Your session has expired"
+      },
+      "do": {
+        "click": {
+          "role": "button",
+          "name": "Log In Again"
+        }
+      },
+      "maxAttempts": 1
+    },
+    {
+      "id": "confirm_dialog_interstitial",
+      "description": "Unexpected confirmation dialog blocking flow; click Continue to proceed",
+      "when": {
+        "textVisible": "Are you sure you want to continue?"
+      },
+      "do": {
+        "click": {
+          "role": "button",
+          "name": "Continue"
+        }
+      },
+      "maxAttempts": 1
+    },
+    {
+      "id": "stale_page_reload",
+      "description": "Stale page warning; click Reload to refresh and continue",
+      "when": {
+        "textVisible": "This page is out of date"
+      },
+      "do": {
+        "click": {
+          "role": "button",
+          "name": "Reload"
+        }
+      },
+      "maxAttempts": 1
+    }
+  ],
+  "success": {
+    "urlContains": "/subaccount/create",
+    "textVisible": "Sub-account opened successfully. Reference number:"
+  },
+  "provenance": {
+    "discoveryRunId": "discovery-2026-08-14T18-43-13-110Z",
+    "model": "claude-sonnet-5",
+    "goal": "Open a new Money Market sub-account nicknamed 'Vacation Fund' for the member and reach the confirmation screen"
+  }
+}

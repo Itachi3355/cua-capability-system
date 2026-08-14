@@ -1,0 +1,26 @@
+{"ts":"2026-08-14T18:45:15.031Z","type":"replay.start","artifact":"open_money_market_subaccount","version":1,"params":{"member_id":"23456"}}
+{"ts":"2026-08-14T18:45:17.763Z","type":"step.start","id":"s0","action":"navigate","intent":"Open the application entry point"}
+{"ts":"2026-08-14T18:45:17.811Z","type":"step.ok","id":"s0","attempts":1}
+{"ts":"2026-08-14T18:45:17.811Z","type":"step.start","id":"s1","action":"click","intent":"Go to Member Search"}
+{"ts":"2026-08-14T18:45:17.971Z","type":"step.ok","id":"s1","attempts":1}
+{"ts":"2026-08-14T18:45:17.971Z","type":"step.start","id":"s2","action":"type","intent":"Enter member id"}
+{"ts":"2026-08-14T18:45:18.024Z","type":"step.ok","id":"s2","attempts":1}
+{"ts":"2026-08-14T18:45:18.025Z","type":"step.start","id":"s3","action":"click","intent":"Search for member"}
+{"ts":"2026-08-14T18:45:18.104Z","type":"step.ok","id":"s3","attempts":1}
+{"ts":"2026-08-14T18:45:18.104Z","type":"step.start","id":"s4","action":"click","intent":"Open member record"}
+{"ts":"2026-08-14T18:45:18.202Z","type":"step.ok","id":"s4","attempts":1}
+{"ts":"2026-08-14T18:45:18.202Z","type":"step.start","id":"s5","action":"click","intent":"Open sub-account creation form"}
+{"ts":"2026-08-14T18:45:18.320Z","type":"step.ok","id":"s5","attempts":1}
+{"ts":"2026-08-14T18:45:18.321Z","type":"step.start","id":"s6","action":"select","intent":"Select Money Market product type"}
+{"ts":"2026-08-14T18:45:18.384Z","type":"step.ok","id":"s6","attempts":1}
+{"ts":"2026-08-14T18:45:18.385Z","type":"step.start","id":"s7","action":"type","intent":"Enter account nickname"}
+{"ts":"2026-08-14T18:45:18.408Z","type":"step.ok","id":"s7","attempts":1}
+{"ts":"2026-08-14T18:45:18.409Z","type":"step.start","id":"s8","action":"click","intent":"Continue to confirmation screen"}
+{"ts":"2026-08-14T18:45:18.516Z","type":"step.ok","id":"s8","attempts":1}
+{"ts":"2026-08-14T18:45:18.516Z","type":"step.start","id":"s9","action":"click","intent":"Confirm and open the sub-account"}
+{"ts":"2026-08-14T18:45:18.522Z","type":"risky.step_executing","stepId":"s9","gate":"approved+allowRisky"}
+{"ts":"2026-08-14T18:45:18.656Z","type":"step.ok","id":"s9","attempts":1}
+{"ts":"2026-08-14T18:45:18.656Z","type":"step.start","id":"s10","action":"extract","intent":"Read the new sub-account reference number from the confirmation screen"}
+{"ts":"2026-08-14T18:45:18.663Z","type":"extract","output":"reference_number","value":"SA-70212"}
+{"ts":"2026-08-14T18:45:18.663Z","type":"step.ok","id":"s10","attempts":1}
+{"ts":"2026-08-14T18:45:18.767Z","type":"replay.result","runId":"replay-2026-08-14T18-45-15-028Z","artifact":{"id":"174c4a04-0b5f-40a1-8475-6901bbaafca2","name":"open_money_market_subaccount","version":1},"status":"success","outputs":{"reference_number":"SA-70212"},"startedAt":"2026-08-14T18:45:15.030Z","finishedAt":"2026-08-14T18:45:18.767Z","evidenceDir":"evidence\\replay-2026-08-14T18-45-15-028Z"}
