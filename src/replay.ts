@@ -28,6 +28,8 @@ export interface ReplayOptions {
   // a human instead of failing outright.
   escalate: boolean;
   evidenceBase?: string;
+  // Per-action delay for watchable demos/screen recordings (Playwright slowMo).
+  slowMoMs?: number;
 }
 
 const POLL_MS = 250;
@@ -94,7 +96,7 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
     ),
   });
 
-  const surface = await PlaywrightSurface.launch({ headful: opts.headful });
+  const surface = await PlaywrightSurface.launch({ headful: opts.headful, slowMoMs: opts.slowMoMs });
   const escalations: string[] = [];
   let escalatedInfo: ReplayResult["escalation"] | undefined;
 

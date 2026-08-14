@@ -95,7 +95,7 @@ npm test
 ```bash
 npm run list                          # catalog of saved capabilities (name, params, outputs, approval)
 npx tsx src/cli.ts approve --artifact artifacts/x.json
-# flags: --headless (both), --no-escalate / --allow-risky (replay), --max-steps / --model (discovery)
+# flags: --headless (both), --no-escalate / --allow-risky / --slow [ms] (replay), --max-steps / --model (discovery)
 ```
 
 ## Layout

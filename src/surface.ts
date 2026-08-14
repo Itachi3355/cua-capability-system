@@ -130,8 +130,8 @@ export class PlaywrightSurface implements Surface {
   private humanCb: ((desc: string) => void) | null = null;
   private constructor(private browser: Browser, public page: Page) {}
 
-  static async launch(opts: { headful?: boolean } = {}): Promise<PlaywrightSurface> {
-    const browser = await chromium.launch({ headless: !opts.headful });
+  static async launch(opts: { headful?: boolean; slowMoMs?: number } = {}): Promise<PlaywrightSurface> {
+    const browser = await chromium.launch({ headless: !opts.headful, slowMo: opts.slowMoMs ?? 0 });
     const page = await browser.newPage();
     const surface = new PlaywrightSurface(browser, page);
     // Page-level binding persists across navigations; routes to the active

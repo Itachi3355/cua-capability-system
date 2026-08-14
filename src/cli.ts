@@ -104,6 +104,7 @@ async function main() {
       headful: !flags.headless,
       allowRisky: Boolean(flags["allow-risky"]),
       escalate: !flags["no-escalate"],
+      slowMoMs: flags.slow === true ? 800 : flags.slow ? Number(flags.slow) : 0,
     });
     console.log("\n=== REPLAY RESULT ===");
     console.log(JSON.stringify(result, null, 2));
