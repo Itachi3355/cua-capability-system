@@ -251,8 +251,25 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
             continue stepLoop;
           }
 
+          // The operator may have closed the browser window entirely — that
+          // ends the session; report it cleanly instead of crashing.
+          if ((err as Error).message?.includes("has been closed")) {
+            return finish({
+              status: "failure",
+              error: {
+                stepId: step.id,
+                expected: "live browser session",
+                observed: "browser window was closed externally — the headful window is the takeover surface and must stay open",
+              },
+            });
+          }
           const shot = log.screenshotPath(`failure-${step.id}`);
-          await surface.screenshot(shot);
+          let shotOk = true;
+          try {
+            await surface.screenshot(shot);
+          } catch {
+            shotOk = false;
+          }
           const expected =
             step.action === "navigate" ? `navigate ${step.url}`
             : step.action === "extract" ? `extract near anchor "${step.anchor}"`
@@ -265,7 +282,7 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
               goalOrCapability: `${artifact.name} v${artifact.version}`,
               stepId: step.id,
               currentUrl: surface.url(),
-              screenshot: shot,
+              screenshot: shotOk ? shot : "(unavailable)",
               instructions: `Automation could not complete step "${step.id}" (${step.intent}). Either perform that step manually, or fix the blocking state and leave the step to automation.`,
             });
             escalations.push(...intervention.humanActions);
@@ -288,7 +305,7 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
 
           return finish({
             status: "failure",
-            error: { stepId: step.id, expected, observed, screenshot: shot },
+            error: { stepId: step.id, expected, observed, screenshot: shotOk ? shot : undefined },
           });
         }
       }

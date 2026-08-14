@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "bb7cad56-232c-409a-9cfb-d5c4f9a929b9",
   "name": "lookup_member_savings_balance",
-  "description": "Look up a member by member number ({{member_id}}) and report their current savings account balance. [DEMO COPY: s3 target sabotaged to force human escalation]",
+  "description": "Look up a member by member number ({{member_id}}) and report their current savings account balance. [DEMO COPY: s3 target fully sabotaged to force human escalation]",
   "version": 1,
   "createdAt": "2026-08-14T18:29:33.850Z",
   "approval": "draft",
@@ -70,12 +70,12 @@
       "expect": {
         "urlContains": "/members?q={{member_id}}"
       },
-      "timeoutMs": 10000,
+      "timeoutMs": 6000,
       "action": "click",
       "target": {
         "role": "button",
         "name": "Execute Query",
-        "nearText": "Member # or Name:",
+        "nearText": "Query Console",
         "structuralPath": "html>body>div>bogus"
       },
       "risky": false
