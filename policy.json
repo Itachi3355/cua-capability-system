@@ -1,0 +1,6 @@
+{
+  "allowedOrigins": ["http://localhost:4173"],
+  "allowedActions": ["navigate", "click", "type", "select", "extract"],
+  "riskyNamePatterns": ["confirm", "delete", "transfer", "submit payment", "open account", "close account"],
+  "redaction": { "mask": "«redacted»" }
+}

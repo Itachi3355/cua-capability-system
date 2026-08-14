@@ -1,0 +1,26 @@
+{
+  "name": "cua-capability-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Computer-use automation: LLM discovery -> capability artifact -> deterministic replay",
+  "scripts": {
+    "target-app": "node target-app/server.js",
+    "discover": "tsx src/cli.ts discover",
+    "replay": "tsx src/cli.ts replay",
+    "list": "tsx src/cli.ts list",
+    "test": "tsx tests/locator.test.ts && tsx tests/replay.smoke.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "express": "^4.21.0",
+    "playwright": "^1.49.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0"
+  }
+}

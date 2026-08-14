@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "id": "00000000-0000-0000-0000-000000000001",
+  "name": "lookup_member_savings_balance",
+  "description": "Look up a member by member number and return their current savings balance. (Hand-written test fixture mirroring what discovery records — used by the no-LLM smoke test.)",
+  "version": 1,
+  "createdAt": "2026-08-14T00:00:00.000Z",
+  "approval": "approved",
+  "app": { "label": "Meridian CU Teller Console (mock)", "baseUrl": "http://localhost:4173" },
+  "params": [
+    {
+      "name": "member_id",
+      "type": "string",
+      "description": "The member number to look up",
+      "required": true,
+      "sensitive": false
+    }
+  ],
+  "outputs": [
+    { "name": "savings_balance", "type": "string", "description": "Current savings account balance, formatted as displayed" }
+  ],
+  "steps": [
+    {
+      "id": "s0",
+      "action": "navigate",
+      "url": "http://localhost:4173/members",
+      "intent": "Open the member search screen",
+      "expect": { "urlContains": "/members" },
+      "timeoutMs": 10000
+    },
+    {
+      "id": "s1",
+      "action": "type",
+      "target": { "role": "textbox", "name": "q", "nearText": "Member # or Name:" },
+      "value": "{{member_id}}",
+      "sensitive": false,
+      "intent": "Enter the member number into the search field",
+      "timeoutMs": 10000
+    },
+    {
+      "id": "s2",
+      "action": "click",
+      "target": { "role": "button", "name": "Search" },
+      "risky": false,
+      "intent": "Run the member search",
+      "expect": { "urlContains": "q={{member_id}}" },
+      "timeoutMs": 10000
+    },
+    {
+      "id": "s3",
+      "action": "click",
+      "target": { "role": "link", "name": "Margaret Chen", "nearText": "{{member_id}}" },
+      "risky": false,
+      "intent": "Open the matching member's record from the results row",
+      "expect": { "urlContains": "/members/{{member_id}}" },
+      "timeoutMs": 10000
+    },
+    {
+      "id": "s4",
+      "action": "extract",
+      "anchor": "Savings",
+      "cellIndex": 1,
+      "output": "savings_balance",
+      "intent": "Read the savings balance from the accounts table",
+      "timeoutMs": 10000
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "member_not_found",
+      "description": "The member number did not match any record — a legitimate business answer, not a failure.",
+      "when": { "textVisible": "No members matched" }
+    }
+  ],
+  "recoveries": [
+    {
+      "id": "session_expired",
+      "description": "Dismiss the idle-session expiry interstitial and continue.",
+      "when": { "textVisible": "session has expired" },
+      "do": { "click": { "role": "link", "name": "Continue session" } },
+      "maxAttempts": 1
+    }
+  ],
+  "success": { "urlContains": "/members/{{member_id}}", "textVisible": "Accounts" },
+  "provenance": {
+    "discoveryRunId": "fixture",
+    "model": "hand-written-for-test",
+    "goal": "look up member {{member_id}} and read their current savings balance"
+  }
+}
