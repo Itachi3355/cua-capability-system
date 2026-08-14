@@ -1,0 +1,14 @@
+{
+  "runId": "replay-2026-08-14T18-30-09-413Z",
+  "artifact": {
+    "id": "bb7cad56-232c-409a-9cfb-d5c4f9a929b9",
+    "name": "lookup_member_savings_balance",
+    "version": 1
+  },
+  "status": "business_outcome",
+  "outputs": {},
+  "outcomeCode": "member_not_found",
+  "startedAt": "2026-08-14T18:30:09.414Z",
+  "finishedAt": "2026-08-14T18:30:10.295Z",
+  "evidenceDir": "evidence\\replay-2026-08-14T18-30-09-413Z"
+}

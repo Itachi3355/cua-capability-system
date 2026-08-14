@@ -1,0 +1,15 @@
+{"ts":"2026-08-14T18:30:04.451Z","type":"replay.start","artifact":"lookup_member_savings_balance","version":1,"params":{"member_id":"23456"}}
+{"ts":"2026-08-14T18:30:04.927Z","type":"step.start","id":"s0","action":"navigate","intent":"Open the application entry point"}
+{"ts":"2026-08-14T18:30:04.962Z","type":"step.ok","id":"s0","attempts":1}
+{"ts":"2026-08-14T18:30:04.963Z","type":"step.start","id":"s1","action":"click","intent":"Navigate to Member Search page"}
+{"ts":"2026-08-14T18:30:05.154Z","type":"step.ok","id":"s1","attempts":1}
+{"ts":"2026-08-14T18:30:05.155Z","type":"step.start","id":"s2","action":"type","intent":"Enter member number to search"}
+{"ts":"2026-08-14T18:30:05.209Z","type":"step.ok","id":"s2","attempts":1}
+{"ts":"2026-08-14T18:30:05.209Z","type":"step.start","id":"s3","action":"click","intent":"Search for member"}
+{"ts":"2026-08-14T18:30:05.296Z","type":"step.ok","id":"s3","attempts":1}
+{"ts":"2026-08-14T18:30:05.296Z","type":"step.start","id":"s4","action":"click","intent":"Open member record to view account details"}
+{"ts":"2026-08-14T18:30:05.408Z","type":"step.ok","id":"s4","attempts":1}
+{"ts":"2026-08-14T18:30:05.408Z","type":"step.start","id":"s6","action":"extract","intent":"Extract just the balance value"}
+{"ts":"2026-08-14T18:30:05.415Z","type":"extract","output":"savings_balance","value":"$612.40"}
+{"ts":"2026-08-14T18:30:05.415Z","type":"step.ok","id":"s6","attempts":1}
+{"ts":"2026-08-14T18:30:05.545Z","type":"replay.result","runId":"replay-2026-08-14T18-30-04-449Z","artifact":{"id":"bb7cad56-232c-409a-9cfb-d5c4f9a929b9","name":"lookup_member_savings_balance","version":1},"status":"success","outputs":{"savings_balance":"$612.40"},"startedAt":"2026-08-14T18:30:04.451Z","finishedAt":"2026-08-14T18:30:05.545Z","evidenceDir":"evidence\\replay-2026-08-14T18-30-04-449Z"}

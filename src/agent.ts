@@ -165,6 +165,7 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
 
   const steps: Step[] = [];
   const outputs: Artifact["outputs"] = [];
+  const extractedCells: string[] = [];
   let stepCounter = 0;
 
   const system = [
@@ -266,11 +267,20 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
 
     try {
       if (toolUse.name === "finish") {
+        // A success condition that embeds extracted data ("$4,821.77") would
+        // only ever pass for this run's inputs — reject it.
+        const dataEmbedded = extractedCells.find(
+          (v) => v.length >= 4 && ((args.success_text_visible || "").includes(v) || (args.success_url_contains || "").includes(v))
+        );
+        if (dataEmbedded) {
+          messages.push({ role: "user", content: [{ type: "tool_result", tool_use_id: toolUse.id, content: `Rejected: the success condition contains run-specific data ("${dataEmbedded}"). Provide a condition based on stable UI text or URL structure (use {{param}} placeholders where needed).` }] });
+          continue;
+        }
         finishInfo = {
           name: args.capability_name,
           description: args.capability_description,
-          textVisible: args.success_text_visible || undefined,
-          urlContains: args.success_url_contains || undefined,
+          textVisible: args.success_text_visible ? templatize(args.success_text_visible) : undefined,
+          urlContains: args.success_url_contains ? templatize(args.success_url_contains) : undefined,
         };
         // Verify the claimed success condition against the live page before accepting.
         const live = await surface.snapshot();
@@ -316,6 +326,7 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
         const existingStep = steps.findIndex((s) => s.action === "extract" && s.output === args.output_name);
         if (existingStep >= 0) steps.splice(existingStep, 1);
         outputs.push({ name: args.output_name, type: "string", description: args.output_description });
+        extractedCells.push(...cells);
         steps.push({
           id: `s${stepCounter++}`, action: "extract", anchor: args.anchor,
           cellIndex, output: args.output_name, intent: args.intent, timeoutMs: 10_000,
@@ -452,8 +463,28 @@ async function proposeOutcomesAndRecoveries(
       system:
         "You just completed a UI automation run (transcript follows). Propose (a) known business outcomes a deterministic replay of this flow might encounter (error banners, not-found messages, validation errors — things a caller should receive as legitimate results, not crashes), and (b) recovery rules for known interstitials (e.g. session-expiry pages) where clicking one control resumes the flow. Base detectors on text patterns this application plausibly shows; keep them short and literal. Respond ONLY with JSON: {\"outcomes\": [{\"code\", \"description\", \"when\": {\"textVisible\"}}], \"recoveries\": [{\"id\", \"description\", \"when\": {\"textVisible\"}, \"do\": {\"click\": {\"role\", \"name\"}}, \"maxAttempts\": 1}]}",
       messages: [
-        ...transcript.slice(-6),
-        { role: "user", content: "Now output the JSON described in the system prompt." },
+        {
+          role: "user",
+          // Flattened transcript: slicing raw messages can orphan
+          // tool_result blocks from their tool_use and 400 the API.
+          content:
+            "Transcript summary:\n" +
+            transcript
+              .map((m) => {
+                const parts = Array.isArray(m.content)
+                  ? m.content.map((b: any) =>
+                      b.type === "text" ? b.text
+                      : b.type === "tool_use" ? `TOOL ${b.name} ${JSON.stringify(b.input)}`
+                      : b.type === "tool_result" ? `RESULT ${typeof b.content === "string" ? b.content : ""}`
+                      : ""
+                    ).join("\n")
+                  : String(m.content);
+                return `${m.role.toUpperCase()}: ${parts}`;
+              })
+              .join("\n---\n")
+              .slice(-12_000) +
+            "\n\nNow output the JSON described in the system prompt.",
+        },
       ],
     });
     const text = response.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "{}";

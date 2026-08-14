@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "id": "bb7cad56-232c-409a-9cfb-d5c4f9a929b9",
+  "name": "lookup_member_savings_balance",
+  "description": "Look up a member by member number ({{member_id}}) and report their current savings account balance.",
+  "version": 1,
+  "createdAt": "2026-08-14T18:29:33.850Z",
+  "approval": "draft",
+  "app": {
+    "label": "Meridian CU Teller Console",
+    "baseUrl": "http://localhost:4173"
+  },
+  "params": [
+    {
+      "name": "member_id",
+      "type": "string",
+      "description": "The member number to look up",
+      "required": true,
+      "sensitive": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "savings_balance",
+      "type": "string",
+      "description": "Current savings account balance for member 12345"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s0",
+      "intent": "Open the application entry point",
+      "timeoutMs": 10000,
+      "action": "navigate",
+      "url": "http://localhost:4173"
+    },
+    {
+      "id": "s1",
+      "intent": "Navigate to Member Search page",
+      "expect": {
+        "urlContains": "/members"
+      },
+      "timeoutMs": 10000,
+      "action": "click",
+      "target": {
+        "role": "link",
+        "name": "Member Search",
+        "nearText": "|",
+        "structuralPath": "html>body>table>tbody>tr:1>td>table>tbody>tr>td:2>a"
+      },
+      "risky": false
+    },
+    {
+      "id": "s2",
+      "intent": "Enter member number to search",
+      "timeoutMs": 10000,
+      "action": "type",
+      "target": {
+        "role": "textbox",
+        "name": "q",
+        "nearText": "Member # or Name:",
+        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr>td:1>input"
+      },
+      "value": "{{member_id}}",
+      "sensitive": false
+    },
+    {
+      "id": "s3",
+      "intent": "Search for member",
+      "expect": {
+        "urlContains": "/members?q={{member_id}}"
+      },
+      "timeoutMs": 10000,
+      "action": "click",
+      "target": {
+        "role": "button",
+        "name": "Search",
+        "nearText": "Member # or Name:",
+        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr>td:2>input"
+      },
+      "risky": false
+    },
+    {
+      "id": "s4",
+      "intent": "Open member record to view account details",
+      "expect": {
+        "urlContains": "/members/{{member_id}}"
+      },
+      "timeoutMs": 10000,
+      "action": "click",
+      "target": {
+        "role": "link",
+        "name": "Margaret Chen",
+        "nearText": "{{member_id}}",
+        "structuralPath": "html>body>table>tbody>tr:2>td>table>tbody>tr:1>td:1>a"
+      },
+      "risky": false
+    },
+    {
+      "id": "s6",
+      "intent": "Extract just the balance value",
+      "timeoutMs": 10000,
+      "action": "extract",
+      "anchor": "Savings",
+      "cellIndex": 1,
+      "output": "savings_balance"
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "member_not_found",
+      "description": "No member matches the given member number or name search",
+      "when": {
+        "textVisible": "No members matched"
+      }
+    }
+  ],
+  "recoveries": [
+    {
+      "id": "session_expired",
+      "description": "Dismiss the idle-session expiry interstitial and continue on the original URL.",
+      "when": {
+        "textVisible": "session has expired"
+      },
+      "do": {
+        "click": {
+          "role": "link",
+          "name": "Continue session"
+        }
+      },
+      "maxAttempts": 1
+    }
+  ],
+  "success": {
+    "urlContains": "/members/{{member_id}}",
+    "textVisible": "Savings"
+  },
+  "provenance": {
+    "discoveryRunId": "discovery-2026-08-14T18-29-13-018Z",
+    "model": "claude-sonnet-5",
+    "goal": "Look up the member by their member number and report their current savings account balance"
+  }
+}

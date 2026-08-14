@@ -47,12 +47,14 @@ app.use((req, res, next) => {
   if (injectSlow) { injectSlow = false; return setTimeout(next, 8000); }
   if (injectTimeout && req.method === "GET") {
     injectTimeout = false;
-    return res.send(page("Session Notice", `
-      <table border="0" cellpadding="12"><tr><td>
-        <font color="#8b0000"><b>Your session has expired due to inactivity.</b></font><br><br>
-        To protect member information, idle sessions are closed automatically.<br><br>
-        <a href="${req.originalUrl}">Continue session</a>
-      </td></tr></table>`));
+    // Bare interstitial — real expiry pages don't render the app chrome/nav.
+    return res.send(`<html><head><title>Meridian CU - Session Notice</title></head>
+<body bgcolor="#e8e4d8" style="font-family: Verdana, sans-serif; font-size: 12px;">
+<table width="480" align="center" border="1" cellpadding="16" bgcolor="#ffffff"><tr><td>
+  <font color="#8b0000" size="3"><b>Your session has expired due to inactivity.</b></font><br><br>
+  To protect member information, idle sessions are closed automatically.<br><br>
+  <a href="${req.originalUrl}">Continue session</a>
+</td></tr></table></body></html>`);
   }
   next();
 });
