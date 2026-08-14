@@ -60,25 +60,25 @@ export async function requestIntervention(
   } catch {
     // already registered from a previous escalation on this session
   }
-  await surface.page.evaluate(() => {
-    const describe = (el: Element) => {
-      const t = el as HTMLInputElement;
+  // String-form evaluate: bundlers inject helpers (__name) into function-form
+  // callbacks that don't exist in the page context.
+  await surface.page.evaluate(`(() => {
+    const describe = (el) => {
       const tag = el.tagName.toLowerCase();
-      const label = (el.getAttribute("aria-label") || t.value || el.textContent || t.name || "")
-        .replace(/\s+/g, " ").trim().slice(0, 60);
-      return `${tag}${t.type ? `[${t.type}]` : ""} "${label}"`;
+      const label = (el.getAttribute("aria-label") || el.value || el.textContent || el.name || "")
+        .replace(/\\s+/g, " ").trim().slice(0, 60);
+      return tag + (el.type ? "[" + el.type + "]" : "") + ' "' + label + '"';
     };
     document.addEventListener("click", (e) => {
-      const el = e.target as Element;
-      if (el) (window as any).__cuaHumanAction(`click ${describe(el)}`);
+      if (e.target) window.__cuaHumanAction("click " + describe(e.target));
     }, true);
     document.addEventListener("change", (e) => {
-      const t = e.target as HTMLInputElement;
+      const t = e.target;
       if (!t) return;
       const value = t.type === "password" ? "«hidden»" : t.value;
-      (window as any).__cuaHumanAction(`set ${describe(t)} = "${value}"`);
+      window.__cuaHumanAction("set " + describe(t) + ' = "' + value + '"');
     }, true);
-  });
+  })()`);
 
   console.log("\n" + "=".repeat(70));
   console.log("  HUMAN INTERVENTION REQUIRED  (controller: human)");
