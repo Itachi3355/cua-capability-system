@@ -70,7 +70,7 @@
       "expect": {
         "urlContains": "/members?q={{member_id}}"
       },
-      "timeoutMs": 6000,
+      "timeoutMs": 1500,
       "action": "click",
       "target": {
         "role": "button",

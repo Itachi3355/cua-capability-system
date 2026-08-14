@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import readline from "node:readline";
 import type { PlaywrightSurface } from "./surface.js";
 import type { RunLogger } from "./logger.js";
@@ -68,7 +70,10 @@ export async function requestIntervention(
   console.log("  and ENTER to stop the run.");
   console.log("=".repeat(70) + "\n");
 
-  const line = await waitForLine();
+  // Two resume channels: the terminal prompt (interactive operator), or a
+  // `resume.signal` file in the run directory containing "resume" or "abort"
+  // (the seam a programmatic operator console would call instead of a TTY).
+  const line = await waitForLineOrSignal(path.join(log.dir, "resume.signal"));
   await surface.disableHumanCapture();
 
   const aborted = line.trim().toLowerCase() === "abort";
@@ -79,11 +84,20 @@ export async function requestIntervention(
   return { humanActions: actions, aborted };
 }
 
-function waitForLine(): Promise<string> {
+function waitForLineOrSignal(signalPath: string): Promise<string> {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const timer = setInterval(() => {
+      if (fs.existsSync(signalPath)) {
+        const content = fs.readFileSync(signalPath, "utf8");
+        fs.unlinkSync(signalPath);
+        clearInterval(timer);
+        rl.close();
+        resolve(content);
+      }
+    }, 500);
     rl.question("", (answer) => {
-      rl.close();
+      clearInterval(timer);
       resolve(answer);
     });
   });
