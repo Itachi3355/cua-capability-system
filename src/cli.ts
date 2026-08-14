@@ -121,7 +121,7 @@ async function main() {
 
   if (cmd === "list") {
     if (!fs.existsSync(ARTIFACT_DIR)) return console.log("(no artifacts)");
-    for (const f of fs.readdirSync(ARTIFACT_DIR)) {
+    for (const f of fs.readdirSync(ARTIFACT_DIR).filter((f) => f.endsWith(".json"))) {
       const a = ArtifactSchema.parse(JSON.parse(fs.readFileSync(path.join(ARTIFACT_DIR, f), "utf8")));
       console.log(`${a.name} v${a.version} [${a.approval}] — ${a.description}`);
       console.log(`  params: ${a.params.map((p) => p.name + (p.sensitive ? " (sensitive)" : "")).join(", ") || "none"}`);
