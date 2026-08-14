@@ -102,13 +102,54 @@ const ENUMERATE_JS = `(() => {
   };
 })()`;
 
+// Human-action capture listeners. Installed per-document; the sessionStorage
+// flag (set for the duration of a handoff) makes them survive navigations —
+// an operator's manual work often spans several page loads.
+const HUMAN_CAPTURE_JS = `(() => {
+  if (window.__cuaCaptureInstalled) return;
+  if (sessionStorage.getItem("__cuaHumanCapture") !== "1") return;
+  window.__cuaCaptureInstalled = true;
+  const describe = (el) => {
+    const tag = el.tagName ? el.tagName.toLowerCase() : "?";
+    const label = ((el.getAttribute && el.getAttribute("aria-label")) || el.value || el.textContent || el.name || "")
+      .replace(/\\s+/g, " ").trim().slice(0, 60);
+    return tag + (el.type ? "[" + el.type + "]" : "") + ' "' + label + '"';
+  };
+  document.addEventListener("click", (e) => {
+    if (e.target && window.__cuaHumanAction) window.__cuaHumanAction("click " + describe(e.target));
+  }, true);
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (!t || !window.__cuaHumanAction) return;
+    const value = t.type === "password" ? "«hidden»" : t.value;
+    window.__cuaHumanAction("set " + describe(t) + ' = "' + value + '"');
+  }, true);
+})()`;
+
 export class PlaywrightSurface implements Surface {
+  private humanCb: ((desc: string) => void) | null = null;
   private constructor(private browser: Browser, public page: Page) {}
 
   static async launch(opts: { headful?: boolean } = {}): Promise<PlaywrightSurface> {
     const browser = await chromium.launch({ headless: !opts.headful });
     const page = await browser.newPage();
-    return new PlaywrightSurface(browser, page);
+    const surface = new PlaywrightSurface(browser, page);
+    // Page-level binding persists across navigations; routes to the active
+    // capture callback (set only while a human holds control).
+    await page.exposeFunction("__cuaHumanAction", (desc: string) => surface.humanCb?.(desc));
+    await page.addInitScript(HUMAN_CAPTURE_JS);
+    return surface;
+  }
+
+  async enableHumanCapture(cb: (desc: string) => void) {
+    this.humanCb = cb;
+    await this.page.evaluate(`sessionStorage.setItem("__cuaHumanCapture", "1")`);
+    await this.page.evaluate(HUMAN_CAPTURE_JS); // current document too
+  }
+
+  async disableHumanCapture() {
+    this.humanCb = null;
+    await this.page.evaluate(`sessionStorage.removeItem("__cuaHumanCapture")`).catch(() => {});
   }
 
   async navigate(url: string) {

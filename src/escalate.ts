@@ -35,8 +35,6 @@ export interface InterventionResult {
   humanActions: string[];
 }
 
-let activeSink: { actions: string[]; log: RunLogger } | null = null;
-
 export async function requestIntervention(
   surface: PlaywrightSurface,
   log: RunLogger,
@@ -47,38 +45,13 @@ export async function requestIntervention(
 
   // Start capturing human actions on the live page.
   const actions: string[] = [];
-  activeSink = { actions, log };
-  try {
-    // The exposed function survives for the life of the page; route through a
-    // module-level sink so repeat escalations on one session keep working.
-    await surface.page.exposeFunction("__cuaHumanAction", (desc: string) => {
-      if (activeSink) {
-        activeSink.actions.push(desc);
-        activeSink.log.event("human.action", { desc });
-      }
-    });
-  } catch {
-    // already registered from a previous escalation on this session
-  }
-  // String-form evaluate: bundlers inject helpers (__name) into function-form
-  // callbacks that don't exist in the page context.
-  await surface.page.evaluate(`(() => {
-    const describe = (el) => {
-      const tag = el.tagName.toLowerCase();
-      const label = (el.getAttribute("aria-label") || el.value || el.textContent || el.name || "")
-        .replace(/\\s+/g, " ").trim().slice(0, 60);
-      return tag + (el.type ? "[" + el.type + "]" : "") + ' "' + label + '"';
-    };
-    document.addEventListener("click", (e) => {
-      if (e.target) window.__cuaHumanAction("click " + describe(e.target));
-    }, true);
-    document.addEventListener("change", (e) => {
-      const t = e.target;
-      if (!t) return;
-      const value = t.type === "password" ? "«hidden»" : t.value;
-      window.__cuaHumanAction("set " + describe(t) + ' = "' + value + '"');
-    }, true);
-  })()`);
+  // Capture is navigation-proof: a page-level binding plus an init script
+  // (gated by a sessionStorage flag) re-arm the listeners on every document
+  // the human visits during the handoff.
+  await surface.enableHumanCapture((desc) => {
+    actions.push(desc);
+    log.event("human.action", { desc });
+  });
 
   console.log("\n" + "=".repeat(70));
   console.log("  HUMAN INTERVENTION REQUIRED  (controller: human)");
@@ -94,7 +67,7 @@ export async function requestIntervention(
   console.log("=".repeat(70) + "\n");
 
   await waitForEnter();
-  activeSink = null;
+  await surface.disableHumanCapture();
 
   log.event("escalation.resolved", { controller: "automation", humanActions: actions.length });
   return { humanActions: actions };
