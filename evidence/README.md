@@ -27,3 +27,6 @@ After `approve`: replay with --allow-risky for member_id=23456 -> success, refer
 Live human escalation and handoff. The artifact is a deliberately sabotaged copy (`artifacts/_escalation_demo.json`: step s3's target renamed/re-anchored so no locator strategy can resolve it). Replay stuck at s3 -> intervention raised with capability, step, reason, URL, and screenshot; controller transferred to the human on the same live browser window. The operator's actions were captured across the handoff (set search field, click Search), the step's checkpoint was then verified as satisfied, and automation resumed at s4 and completed. Final status `escalated` with humanActions, resumedAtStep, and the extracted output.
 
 Note: earlier iterations of this demo drove three hardening changes now in the engine — navigation-proof action capture, resume-at-furthest-satisfied-checkpoint (an operator who works past the stuck step no longer causes an escalation loop), and bounded escalations per step with an operator abort channel.
+
+## `replay-2026-08-14T19-37-00-070Z`
+Bounded escalation: same sabotaged artifact, but the operator handed control back twice (ENTER) without resolving the step. After the per-step intervention cap (2), the run ended as a clean hard failure — `unresolved after 2 human interventions` — with per-intervention screenshots, instead of escalating forever.
