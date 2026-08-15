@@ -250,14 +250,18 @@ export function scoreElement(desc: ElementDescriptor, el: ObservedElement): numb
   let score = 0;
   const dn = norm(desc.name);
   const en = norm(el.name);
-  const nameMatched = dn && (en === dn || ((en.includes(dn) || dn.includes(en)) && en.length > 0));
+  // Partial credit requires the contained string to be substantial (>= 4
+  // chars) — a 1-2 char fragment must not win a fuzzy match uncontested.
+  const partial =
+    (dn.length >= 4 && en.includes(dn)) || (en.length >= 4 && dn.includes(en));
+  const nameMatched = dn.length > 0 && (en === dn || partial);
   if (dn && en === dn) score += 3;
   else if (nameMatched) score += 2;
   if (desc.nearText) {
     const dnear = norm(desc.nearText);
     const enear = norm(el.nearText);
     if (dnear && enear === dnear) score += 2;
-    else if (dnear && (enear.includes(dnear) || dnear.includes(enear)) && enear.length > 0) score += 1;
+    else if ((dnear.length >= 4 && enear.includes(dnear)) || (enear.length >= 4 && dnear.includes(enear))) score += 1;
   }
   // Data-dependent names: a results-row link's text changes with the data
   // ("Margaret Chen" vs "Raj Patel"), but its anchor cell (the parameterized

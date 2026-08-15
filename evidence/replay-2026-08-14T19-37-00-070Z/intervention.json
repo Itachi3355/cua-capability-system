@@ -1,0 +1,8 @@
+{
+  "reason": "target not resolved: not_found: no element matched role=button name=\"Execute Query\" near=\"Query Console\"",
+  "goalOrCapability": "lookup_member_savings_balance v1",
+  "stepId": "s3",
+  "currentUrl": "http://localhost:4173/members",
+  "screenshot": "evidence\\replay-2026-08-14T19-37-00-070Z\\01-failure-s3.png",
+  "instructions": "Automation could not complete step \"s3\" (Search for member). Either perform that step manually, or fix the blocking state and leave the step to automation."
+}

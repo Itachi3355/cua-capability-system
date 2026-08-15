@@ -23,7 +23,7 @@
     {
       "name": "savings_balance",
       "type": "string",
-      "description": "Current savings account balance for member 12345"
+      "description": "Current savings account balance for member {{member_id}}"
     }
   ],
   "steps": [

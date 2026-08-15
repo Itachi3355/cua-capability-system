@@ -62,3 +62,13 @@ assert.strictEqual(scoreElement({ role: "button", name: "Search" }, el({ role: "
 }
 
 console.log("locator.test.ts: all assertions passed");
+
+// short-fragment substring must NOT win a fuzzy match (unanchored-substring guard)
+{
+  const a = el({ cuaId: "a", role: "button", name: "OK" });
+  const res = resolveDescriptor({ role: "button", name: "Blocked Operation Key" }, snap([a]));
+  assert("error" in res && res.error === "not_found");
+}
+
+// substantial partials still match
+assert(scoreElement({ role: "button", name: "Search" }, el({ role: "button", name: "Search Members" })) >= 2);

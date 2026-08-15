@@ -82,9 +82,11 @@ same action sequence, with no model choosing anything. Waiting is bounded
 polling against explicit conditions, not sleeps.
 
 **Locator resolution** (`resolveDescriptor`): candidates are scored — exact
-accessible-name match > partial > exact nearby-text anchor (for data-dependent
-names like a result row's link text, which legitimately differs per input) —
-and ambiguity is an explicit error, never a silent first match. The structural
+accessible-name match > substantial partial match > exact nearby-text anchor
+(for data-dependent names like a result row's link text, which legitimately
+differs per input). A clear score winner is taken; a *tie* at the top score is
+an explicit `ambiguous` error unless the recorded `nth` disambiguates — the
+failure mode we refuse is silently picking among equals. The structural
 path is used only when semantic matching fails, and its use is logged as a
 degradation signal (that's the drift tripwire: a structural-fallback spike on
 an artifact means the UI changed and the artifact needs re-recording or
@@ -159,10 +161,14 @@ re-attempt it with fresh classification. In discovery, the model receives a
 fresh observation after the handoff and continues.
 
 The operator console is deliberately a terminal prompt plus the live browser
-window — mocked thin, as the brief allows. The mechanism (pause, cede, capture,
-verify-and-resume, and an auditable record of who was in control when) is real,
-and a production operator UI would sit behind `requestIntervention()` without
-changing the model.
+window — mocked thin, as the brief allows. What is production-real and
+transport-independent: the control state machine, the intervention payload,
+action capture, and verify-and-resume, all behind `requestIntervention()`
+(which already accepts a programmatic resume/abort signal alongside the TTY).
+What is *not* free: remote takeover of a headless session is a genuinely
+different transport (CDP screencast / VNC-style co-browsing) that would need
+building behind that same seam — the seam localizes the work, it doesn't
+eliminate it.
 
 ## 6. Safety
 
@@ -183,8 +189,12 @@ changing the model.
   with bland labels — real deployment needs per-app risk annotations in the
   artifact (reviewable, like outcomes). Screenshots are not redacted, so
   evidence for flows over regulated data needs masked capture or encrypted
-  storage. The allowlist is origin-granular, not route-granular. All three are
-  config-shaped extensions, not redesigns.
+  storage. The allowlist is origin-granular, not route-granular. Literal-match
+  redaction skips values under 3 characters and would need format-aware
+  matching (account-number patterns, etc.) for production. Anchor-based
+  extraction handles labeled same-row layouts; cross-row and deeply nested
+  label/value arrangements need a richer region model. All of these are
+  config- or module-shaped extensions, not redesigns.
 
 ## 7. Cuts
 

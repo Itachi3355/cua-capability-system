@@ -280,7 +280,7 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
         }
         finishInfo = {
           name: args.capability_name,
-          description: args.capability_description,
+          description: templatize(args.capability_description),
           textVisible: args.success_text_visible ? templatize(args.success_text_visible) : undefined,
           urlContains: args.success_url_contains ? templatize(args.success_url_contains) : undefined,
         };
@@ -327,11 +327,13 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
         if (existingOut >= 0) outputs.splice(existingOut, 1);
         const existingStep = steps.findIndex((s) => s.action === "extract" && s.output === args.output_name);
         if (existingStep >= 0) steps.splice(existingStep, 1);
-        outputs.push({ name: args.output_name, type: "string", description: args.output_description });
+        // Descriptions and intents are model-authored prose — templatize them
+        // too so no concrete run value survives anywhere in the artifact.
+        outputs.push({ name: args.output_name, type: "string", description: templatize(args.output_description) });
         extractedCells.push(...cells);
         steps.push({
           id: `s${stepCounter++}`, action: "extract", anchor: args.anchor,
-          cellIndex, output: args.output_name, intent: args.intent, timeoutMs: 10_000,
+          cellIndex, output: args.output_name, intent: templatize(args.intent), timeoutMs: 10_000,
         });
         log.event("extract", { output: args.output_name, anchor: args.anchor, value: redact(value, sensitiveValues, mask) });
         resultText = `Extracted "${args.output_name}" = "${redact(value, sensitiveValues, mask)}"\nCells after anchor: ${cells.map((c, ci) => `[${ci}] "${redact(c, sensitiveValues, mask)}"`).join(" ")}\nIf the output should be a single cell, call extract again with cell_index.`;
@@ -347,7 +349,7 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
         await surface.navigate(target);
         steps.push({
           id: `s${stepCounter++}`, action: "navigate", url: templatize(target),
-          intent: args.intent, timeoutMs: 10_000,
+          intent: templatize(args.intent), timeoutMs: 10_000,
         });
       } else {
         const el = elementByCuaId().get(args.element);
@@ -362,7 +364,7 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
           await surface.click(el.cuaId);
           steps.push({
             id: `s${stepCounter++}`, action: "click", target: descriptorFor(el),
-            intent: args.intent, risky, timeoutMs: 10_000,
+            intent: templatize(args.intent), risky, timeoutMs: 10_000,
           });
         } else if (toolUse.name === "type") {
           const text = substitute(args.text);
@@ -370,13 +372,13 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
           const sensitive = input.params.some((p) => p.sensitive && args.text.includes(`{{${p.name}}}`));
           steps.push({
             id: `s${stepCounter++}`, action: "type", target: descriptorFor(el),
-            value: templatize(args.text), sensitive, intent: args.intent, timeoutMs: 10_000,
+            value: templatize(args.text), sensitive, intent: templatize(args.intent), timeoutMs: 10_000,
           });
         } else if (toolUse.name === "select") {
           await surface.select(el.cuaId, args.option);
           steps.push({
             id: `s${stepCounter++}`, action: "select", target: descriptorFor(el),
-            value: args.option, intent: args.intent, timeoutMs: 10_000,
+            value: args.option, intent: templatize(args.intent), timeoutMs: 10_000,
           });
         }
       }

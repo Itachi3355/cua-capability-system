@@ -1,0 +1,19 @@
+{
+  "runId": "replay-2026-08-14T19-37-00-070Z",
+  "artifact": {
+    "id": "bb7cad56-232c-409a-9cfb-d5c4f9a929b9",
+    "name": "lookup_member_savings_balance",
+    "version": 1
+  },
+  "status": "failure",
+  "outputs": {},
+  "error": {
+    "stepId": "s3",
+    "expected": "click on {\"role\":\"button\",\"name\":\"Execute Query\",\"nearText\":\"Query Console\",\"structuralPath\":\"html>body>div>bogus\"}",
+    "observed": "target not resolved: not_found: no element matched role=button name=\"Execute Query\" near=\"Query Console\" (unresolved after 2 human interventions)",
+    "screenshot": "evidence\\replay-2026-08-14T19-37-00-070Z\\02-failure-s3.png"
+  },
+  "startedAt": "2026-08-14T19:37:00.071Z",
+  "finishedAt": "2026-08-14T19:37:18.692Z",
+  "evidenceDir": "evidence\\replay-2026-08-14T19-37-00-070Z"
+}
