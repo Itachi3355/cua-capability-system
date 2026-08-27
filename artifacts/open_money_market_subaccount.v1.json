@@ -45,8 +45,7 @@
       "target": {
         "role": "link",
         "name": "Member Search",
-        "nearText": "»",
-        "structuralPath": "html>body>table>tbody>tr:2>td>table>tbody>tr:0>td:1>a"
+        "nearText": "»"
       },
       "risky": false
     },
@@ -75,8 +74,7 @@
       "target": {
         "role": "button",
         "name": "Search",
-        "nearText": "Member # or Name:",
-        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr>td:2>input"
+        "nearText": "Member # or Name:"
       },
       "risky": false
     },
@@ -91,8 +89,7 @@
       "target": {
         "role": "link",
         "name": "Margaret Chen",
-        "nearText": "{{member_id}}",
-        "structuralPath": "html>body>table>tbody>tr:2>td>table>tbody>tr:1>td:1>a"
+        "nearText": "{{member_id}}"
       },
       "risky": false
     },
@@ -107,8 +104,7 @@
       "target": {
         "role": "link",
         "name": "Open Sub-Account",
-        "nearText": "»",
-        "structuralPath": "html>body>table>tbody>tr:2>td>table:2>tbody>tr>td:1>a"
+        "nearText": "»"
       },
       "risky": false
     },
@@ -120,8 +116,7 @@
       "target": {
         "role": "select",
         "name": "ptype",
-        "nearText": "Product:",
-        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr:0>td:1>select"
+        "nearText": "Product:"
       },
       "value": "Money Market"
     },
@@ -133,8 +128,7 @@
       "target": {
         "role": "textbox",
         "name": "nick",
-        "nearText": "Account Nickname:",
-        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr:1>td:1>input"
+        "nearText": "Account Nickname:"
       },
       "value": "Vacation Fund",
       "sensitive": false
@@ -150,8 +144,7 @@
       "target": {
         "role": "button",
         "name": "Continue »",
-        "nearText": "Account Nickname:",
-        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr:2>td:1>input"
+        "nearText": "Account Nickname:"
       },
       "risky": false
     },
@@ -166,8 +159,7 @@
       "target": {
         "role": "button",
         "name": "Confirm and Open Account",
-        "nearText": "Confirming will open a live sub-account on the member's record.",
-        "structuralPath": "html>body>table>tbody>tr:2>td>form>input:2"
+        "nearText": "Confirming will open a live sub-account on the member's record."
       },
       "risky": true
     },

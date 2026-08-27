@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import readline from "node:readline";
 import type { Artifact, ElementDescriptor, ObservedElement, Snapshot, Step } from "./types.js";
 import { Artifact as ArtifactSchema } from "./types.js";
-import { PlaywrightSurface } from "./surface.js";
+import { PlaywrightSurface, cleanStructuralPaths, needsStructuralFallback } from "./surface.js";
 import { actionAllowed, isRiskyName, originAllowed, redact, redactSnapshot, type Policy } from "./policy.js";
 import { RunLogger } from "./logger.js";
 import { requestIntervention } from "./escalate.js";
@@ -148,7 +148,6 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
 
   const sensitiveValues = input.params.filter((p) => p.sensitive).map((p) => p.value);
   const mask = input.policy.redaction.mask;
-  const paramByValue = new Map(input.params.filter((p) => !p.sensitive).map((p) => [p.value, p.name]));
 
   // Template every param value back out of recorded strings so the artifact
   // is parameterized, not a macro of one concrete run.
@@ -226,13 +225,16 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
     const ties = snap.elements.filter(
       (e) => e.role === el.role && e.name === el.name && e.nearText === el.nearText
     );
-    const desc: ElementDescriptor = {
-      role: el.role,
-      name: templatize(el.name),
-      structuralPath: el.structuralPath,
-    };
-    if (el.nearText) desc.nearText = templatize(el.nearText);
-    if (ties.length > 1) desc.nth = ties.indexOf(el);
+    const hadTies = ties.length > 1;
+    const name = templatize(el.name);
+    const nearText = el.nearText ? templatize(el.nearText) : undefined;
+
+    const desc: ElementDescriptor = { role: el.role, name };
+    if (nearText) desc.nearText = nearText;
+    if (hadTies) desc.nth = ties.indexOf(el);
+    // Structural path is the last-resort fallback; persist it only where the
+    // perceptual identity is weak or was ambiguous at record time.
+    if (needsStructuralFallback(name, nearText, hadTies)) desc.structuralPath = el.structuralPath;
     return desc;
   };
 
@@ -416,7 +418,11 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
   // human reviewer approves/edits them — they are config, not runtime model calls.
   const enrichment = await proposeOutcomesAndRecoveries(anthropic, input.model, messages, log);
 
-  const artifact: Artifact = ArtifactSchema.parse({
+  // Model-proposed recovery targets never carry structural paths, and the
+  // record-time policy already filtered step targets; this pass is the
+  // belt-and-braces guarantee that the persisted artifact holds no
+  // unnecessary DOM fingerprints.
+  const artifact: Artifact = cleanStructuralPaths(ArtifactSchema.parse({
     schemaVersion: 1,
     id: crypto.randomUUID(),
     name: finishInfo.name,
@@ -434,7 +440,7 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
     recoveries: enrichment.recoveries,
     success: { textVisible: finishInfo.textVisible, urlContains: finishInfo.urlContains },
     provenance: { discoveryRunId: log.runId, model: input.model, goal: input.goal },
-  });
+  }));
 
   log.event("discovery.success", { artifactId: artifact.id, name: artifact.name, steps: steps.length });
   log.writeFile("artifact.json", JSON.stringify(artifact, null, 2));

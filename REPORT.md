@@ -81,6 +81,17 @@ Replay is deterministic in the decision sense: same artifact + same inputs →
 same action sequence, with no model choosing anything. Waiting is bounded
 polling against explicit conditions, not sleeps.
 
+**Structural paths are recorded sparingly.** A tag-chain path is a DOM
+fingerprint — the least portable thing available and the first casualty of a
+cosmetic template change. It is persisted only where perceptual identity is
+genuinely weak: ties at record time (`nth` was needed) or a stable name under
+three characters (`q`, or a name that is purely `{{param}}`). Everything with a
+real label keeps role + name + nearText alone. A `clean-artifacts` CLI pass
+applies the same policy to artifacts recorded earlier; it is never applied
+silently on load, because the saved artifact is the contract a caller replays.
+When a retained structural path *is* used, `locator.structural_fallback` still
+fires as the drift tripwire.
+
 **Locator resolution** (`resolveDescriptor`): candidates are scored — exact
 accessible-name match > substantial partial match > exact nearby-text anchor
 (for data-dependent names like a result row's link text, which legitimately

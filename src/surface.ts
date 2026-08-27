@@ -245,6 +245,55 @@ export interface Resolution {
 
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
+// ---------------------------------------------------------------------------
+// Structural-path policy.
+//
+// A structural path (tag chain with indices) is a DOM fingerprint: it is the
+// least portable thing we can record, and on a legacy surface it is also the
+// most likely to be wrong after a cosmetic template change. We keep it only
+// where perceptual identity is genuinely weak:
+//
+//   - ties at record time (nth was needed)  -> disambiguation insurance
+//   - stable name shorter than 3 chars      -> "q", "nick", pure {{param}}
+//
+// Everything else ("Open Sub-Account", "Confirm and Open Account") is
+// identified well enough by role + name + nearText alone.
+// ---------------------------------------------------------------------------
+export function needsStructuralFallback(
+  name: string,
+  _nearText: string | undefined,
+  hadTies: boolean
+): boolean {
+  if (hadTies) return true;
+  // Judge only the stable portion: a name that is mostly a parameter template
+  // carries little perceptual weight of its own.
+  const stable = name.replace(/\{\{[^}]+\}\}/g, "").trim();
+  return stable.length < 3;
+}
+
+// Strip structural paths that the policy above says are unnecessary. Applied
+// at record time, and available as an explicit `clean-artifacts` CLI pass for
+// artifacts recorded before the policy existed. Deliberately NOT applied on
+// load during replay: the artifact is the contract, and silently rewriting a
+// saved capability's locators at execution time would undermine that.
+export function cleanStructuralPaths<T extends { steps: unknown[]; recoveries?: unknown[] }>(artifact: T): T {
+  const cleanDesc = (d: ElementDescriptor | undefined) => {
+    if (!d?.structuralPath) return d;
+    if (needsStructuralFallback(d.name ?? "", d.nearText, d.nth !== undefined)) return d;
+    const { structuralPath, ...rest } = d;
+    return rest;
+  };
+
+  for (const step of artifact.steps as { target?: ElementDescriptor; expect?: { targetVisible?: ElementDescriptor } }[]) {
+    if (step.target) step.target = cleanDesc(step.target)!;
+    if (step.expect?.targetVisible) step.expect.targetVisible = cleanDesc(step.expect.targetVisible)!;
+  }
+  for (const rule of (artifact.recoveries ?? []) as { do?: { click?: ElementDescriptor } }[]) {
+    if (rule.do?.click) rule.do.click = cleanDesc(rule.do.click)!;
+  }
+  return artifact;
+}
+
 export function scoreElement(desc: ElementDescriptor, el: ObservedElement): number {
   if (desc.role !== "other" && el.role !== desc.role) return 0;
   let score = 0;

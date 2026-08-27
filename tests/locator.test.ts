@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { resolveDescriptor, scoreElement } from "../src/surface.js";
+import { cleanStructuralPaths, needsStructuralFallback, resolveDescriptor, scoreElement } from "../src/surface.js";
 import type { ObservedElement, Snapshot } from "../src/types.js";
 
 const el = (partial: Partial<ObservedElement>): ObservedElement => ({
@@ -59,6 +59,40 @@ assert.strictEqual(scoreElement({ role: "button", name: "Search" }, el({ role: "
     snap([a])
   );
   assert(!("error" in res) && res.method === "structural");
+}
+
+// --- structural-path policy ---
+
+// strong names need no DOM fingerprint
+assert.strictEqual(needsStructuralFallback("Confirm and Open Account", "Product:", false), false);
+// short field names do
+assert.strictEqual(needsStructuralFallback("q", "Member # or Name:", false), true);
+// a name that is only a param template has no stable perceptual weight
+assert.strictEqual(needsStructuralFallback("{{member_id}}", undefined, false), true);
+// ties always keep their disambiguation insurance
+assert.strictEqual(needsStructuralFallback("Details", "row", true), true);
+
+// cleanStructuralPaths strips exactly the unnecessary ones
+{
+  const artifact = {
+    steps: [
+      { action: "click", target: { role: "button", name: "Search", structuralPath: "html>body>form>input:1" } },
+      { action: "type", target: { role: "textbox", name: "q", structuralPath: "html>body>form>input:0" } },
+      { action: "click", target: { role: "link", name: "Details", nearText: "row", nth: 1, structuralPath: "html>body>a" } },
+    ],
+    recoveries: [{ do: { click: { role: "link", name: "Continue session" } } }],
+  };
+  cleanStructuralPaths(artifact as any);
+  assert.strictEqual((artifact.steps[0].target as any).structuralPath, undefined);
+  assert.strictEqual((artifact.steps[1].target as any).structuralPath, "html>body>form>input:0");
+  assert.strictEqual((artifact.steps[2].target as any).structuralPath, "html>body>a");
+}
+
+// a descriptor stripped of its structural path still resolves semantically
+{
+  const search = el({ cuaId: "s", role: "button", name: "Search", nearText: "Member # or Name:" });
+  const res = resolveDescriptor({ role: "button", name: "Search", nearText: "Member # or Name:" }, snap([search]));
+  assert(!("error" in res) && res.method === "semantic-exact");
 }
 
 console.log("locator.test.ts: all assertions passed");

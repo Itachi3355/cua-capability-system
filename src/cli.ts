@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Artifact as ArtifactSchema } from "./types.js";
 import { loadPolicy } from "./policy.js";
+import { cleanStructuralPaths } from "./surface.js";
 import { runDiscovery } from "./agent.js";
 import { replayArtifact } from "./replay.js";
 
@@ -120,6 +121,23 @@ async function main() {
     return;
   }
 
+  if (cmd === "clean-artifacts") {
+    // Explicit, opt-in rewrite: strips structural fallbacks that the locator
+    // policy deems unnecessary (see needsStructuralFallback). Applied here and
+    // at record time — never silently on load, because the saved artifact is
+    // the contract a caller replays.
+    for (const f of fs.readdirSync(ARTIFACT_DIR).filter((f) => f.endsWith(".json"))) {
+      const file = path.join(ARTIFACT_DIR, f);
+      const before = fs.readFileSync(file, "utf8");
+      const a = cleanStructuralPaths(ArtifactSchema.parse(JSON.parse(before)));
+      const after = JSON.stringify(a, null, 2);
+      const dropped = (before.match(/structuralPath/g) ?? []).length - (after.match(/structuralPath/g) ?? []).length;
+      fs.writeFileSync(file, after);
+      console.log(`${f}: dropped ${dropped} structural path(s)`);
+    }
+    return;
+  }
+
   if (cmd === "list") {
     if (!fs.existsSync(ARTIFACT_DIR)) return console.log("(no artifacts)");
     for (const f of fs.readdirSync(ARTIFACT_DIR).filter((f) => f.endsWith(".json"))) {
@@ -131,7 +149,7 @@ async function main() {
     return;
   }
 
-  console.error("Unknown command. Use: discover | replay | approve | list");
+  console.error("Unknown command. Use: discover | replay | approve | list | clean-artifacts");
   process.exit(2);
 }
 

@@ -45,8 +45,7 @@
       "target": {
         "role": "link",
         "name": "Member Search",
-        "nearText": "|",
-        "structuralPath": "html>body>table>tbody>tr:1>td>table>tbody>tr>td:2>a"
+        "nearText": "|"
       },
       "risky": false
     },
@@ -75,8 +74,7 @@
       "target": {
         "role": "button",
         "name": "Search",
-        "nearText": "Member # or Name:",
-        "structuralPath": "html>body>table>tbody>tr:2>td>form>table>tbody>tr>td:2>input"
+        "nearText": "Member # or Name:"
       },
       "risky": false
     },
@@ -91,8 +89,7 @@
       "target": {
         "role": "link",
         "name": "Margaret Chen",
-        "nearText": "{{member_id}}",
-        "structuralPath": "html>body>table>tbody>tr:2>td>table>tbody>tr:1>td:1>a"
+        "nearText": "{{member_id}}"
       },
       "risky": false
     },
