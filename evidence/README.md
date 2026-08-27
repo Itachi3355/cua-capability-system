@@ -30,3 +30,6 @@ Note: earlier iterations of this demo drove three hardening changes now in the e
 
 ## `replay-2026-08-14T19-37-00-070Z`
 Bounded escalation: same sabotaged artifact, but the operator handed control back twice (ENTER) without resolving the step. After the per-step intervention cap (2), the run ended as a clean hard failure — `unresolved after 2 human interventions` — with per-intervention screenshots, instead of escalating forever.
+
+## `replay-2026-08-27T03-44-57-890Z`
+Post-cleanup determinism check: the same capability replayed for a third member (34567, `$15,002.66`) *after* the structural-path policy stripped 11 DOM fingerprints from the saved artifacts. Semantic descriptors alone resolved every control — evidence that the retained locators, not the removed structural paths, were doing the work.
