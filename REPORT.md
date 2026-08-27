@@ -61,6 +61,13 @@ the actuator, which is what keeps the desktop story credible (§4).
   path kept only as a flagged last resort. Reasoning: in legacy apps the
   markup is hostile but what an *operator perceives* is stable; that is also
   exactly the representation an accessibility-tree or OCR surface can produce.
+- **Drafts are honest about what is verified.** Detectors the model proposes
+  describe screens it never visited, so they are guesses until reviewed — that
+  is what `draft -> approved` is for. The recorder auto-rejects the one class it
+  can disprove: a detector whose text appears on the observed success page
+  would classify every good run as a business outcome. A real clean-checkout
+  run proposed exactly that (keyed on the `Accounts` heading); it is now
+  dropped and logged as evidence, and the case is a regression test.
 - **`outcomes` and `recoveries` live in the artifact**, not in code. "No such
   member" detection and "dismiss the session-expiry interstitial" are
   app-specific knowledge; putting them in the reviewable artifact means a

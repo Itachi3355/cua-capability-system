@@ -416,28 +416,16 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
   // human reviewer approves/edits them — they are config, not runtime model calls.
   const enrichment = await proposeOutcomesAndRecoveries(anthropic, input.model, messages, log);
 
-  // Validate the proposals against the one page we know is a success. A
-  // detector whose text is visible on the successful end state is
-  // self-evidently wrong: it would classify every good run as a business
-  // outcome (or fire a recovery on a healthy page). The model cannot see this
-  // — it is guessing at screens it never visited — so the recorder drops them
-  // rather than shipping a draft that misclassifies its own happy path.
-  const successText = (await surface.snapshot()).visibleText.toLowerCase();
-  const contradictsSuccess = (text?: string) => !!text && successText.includes(substitute(text).toLowerCase());
-  const outcomes = enrichment.outcomes.filter((o) => {
-    if (contradictsSuccess(o.when.textVisible)) {
-      log.event("enrichment.rejected", { kind: "outcome", code: o.code, reason: "detector text is visible on the success page" });
-      return false;
-    }
-    return true;
-  });
-  const recoveries = enrichment.recoveries.filter((rule) => {
-    if (contradictsSuccess(rule.when.textVisible)) {
-      log.event("enrichment.rejected", { kind: "recovery", id: rule.id, reason: "trigger text is visible on the success page" });
-      return false;
-    }
-    return true;
-  });
+  // Validate the proposals against the one page we know is a success (see
+  // filterEnrichment).
+  const successText = (await surface.snapshot()).visibleText;
+  const { outcomes, recoveries, rejected } = filterEnrichment(
+    enrichment.outcomes,
+    enrichment.recoveries,
+    successText,
+    substitute
+  );
+  for (const rej of rejected) log.event("enrichment.rejected", rej);
 
   // Model-proposed recovery targets never carry structural paths, and the
   // record-time policy already filtered step targets; this pass is the
@@ -533,4 +521,40 @@ async function proposeOutcomesAndRecoveries(
     log.event("enrichment.skipped", { error: (err as Error).message });
     return { outcomes: [], recoveries: [] };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Enrichment validation.
+//
+// The model proposes outcome detectors and recovery rules for screens it never
+// visited — useful, but unverified guesses. Exactly one of those guesses can be
+// disproved automatically: a detector whose text is visible on the successful
+// end state is self-evidently wrong, because it would classify every good run
+// as a business outcome (or fire a recovery on a healthy page). A real
+// discovery run proposed `no_savings_account` keyed on "Accounts" — a heading
+// present on every member page — which turned successful replays into
+// business_outcome results. Those are dropped here; the rest stay in the draft
+// for a human reviewer, which is what the draft -> approved gate is for.
+// ---------------------------------------------------------------------------
+export function filterEnrichment(
+  outcomes: Artifact["outcomes"],
+  recoveries: Artifact["recoveries"],
+  successText: string,
+  substitute: (s: string) => string
+): { outcomes: Artifact["outcomes"]; recoveries: Artifact["recoveries"]; rejected: Record<string, string>[] } {
+  const success = successText.toLowerCase();
+  const rejected: Record<string, string>[] = [];
+  const contradicts = (text?: string) => !!text && success.includes(substitute(text).toLowerCase());
+
+  const keptOutcomes = outcomes.filter((o) => {
+    if (!contradicts(o.when.textVisible)) return true;
+    rejected.push({ kind: "outcome", code: o.code, reason: "detector text is visible on the success page" });
+    return false;
+  });
+  const keptRecoveries = recoveries.filter((r) => {
+    if (!contradicts(r.when.textVisible)) return true;
+    rejected.push({ kind: "recovery", id: r.id, reason: "trigger text is visible on the success page" });
+    return false;
+  });
+  return { outcomes: keptOutcomes, recoveries: keptRecoveries, rejected };
 }
