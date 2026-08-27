@@ -4,6 +4,7 @@ import { PlaywrightSurface, resolveDescriptor, type Resolution } from "./surface
 import { actionAllowed, originAllowed, redact, type Policy } from "./policy.js";
 import { RunLogger } from "./logger.js";
 import { requestIntervention } from "./escalate.js";
+import { substitute as substituteText } from "./templating.js";
 
 // ---------------------------------------------------------------------------
 // Deterministic replay — the production execution path. No LLM anywhere in
@@ -34,22 +35,82 @@ export interface ReplayOptions {
 
 const POLL_MS = 250;
 
+// ---------------------------------------------------------------------------
+// Where to resume after a human intervention.
+//
+// Pure and exported so the highest-complexity decision in the executor can be
+// tested without a browser or an operator. Returns the index of the last step
+// to treat as done (resume continues at index + 1), or -1 to re-attempt the
+// stuck step.
+//
+// Rules, in order:
+//   - a stuck step with no checkpoint is never assumed done (it cannot be
+//     verified, so it is re-attempted under the escalation bound);
+//   - otherwise the furthest later checkpoint that already holds wins, so an
+//     operator who worked past the stuck step is not made to watch the
+//     automation redo their work;
+//   - but never fast-forward over a step that produces a declared output:
+//     extract steps carry no checkpoint, so the scan could only ever skip
+//     them, returning a result missing a field the contract promises.
+// ---------------------------------------------------------------------------
+export function resumeTarget(
+  steps: Step[],
+  stuckIndex: number,
+  satisfied: (step: Step) => boolean
+): number {
+  const stuck = steps[stuckIndex];
+  const satisfiedHere = !!stuck.expect && satisfied(stuck);
+  let resumeAfter = satisfiedHere ? stuckIndex : -1;
+
+  if (!satisfiedHere) {
+    for (let j = steps.length - 1; j > stuckIndex; j--) {
+      if (steps[j].expect && satisfied(steps[j])) {
+        resumeAfter = j;
+        break;
+      }
+    }
+  }
+
+  if (resumeAfter > stuckIndex) {
+    const pendingExtract = steps.findIndex(
+      (st, idx) => idx > stuckIndex && idx <= resumeAfter && st.action === "extract"
+    );
+    if (pendingExtract !== -1) resumeAfter = satisfiedHere ? pendingExtract - 1 : -1;
+  }
+  return resumeAfter;
+}
+
+// ---------------------------------------------------------------------------
+// Declared output types are enforced, not decorative: a capability whose
+// contract says it returns a number hands the caller a number, or fails
+// loudly. Display separators and currency marks are stripped first; anything
+// that is still not a plain number is a hard failure rather than a string
+// smuggled through under a numeric label.
+// ---------------------------------------------------------------------------
+export function coerceOutput(raw: string, type: "string" | "number", outputName: string): string | number {
+  if (type === "string") return raw;
+  const stripped = ["$", ",", " ", " ", "£", "€", "%"].reduce(
+    (acc, ch) => acc.split(ch).join(""),
+    raw.trim()
+  );
+  if (!/^-?\d+(\.\d+)?$/.test(stripped)) {
+    throw new Error(`output "${outputName}" is declared number but the page yielded ${JSON.stringify(raw)}`);
+  }
+  return Number(stripped);
+}
+
 export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): Promise<ReplayResult> {
   const log = new RunLogger("replay", opts.evidenceBase);
   const startedAt = new Date().toISOString();
-  const outputs: Record<string, string> = {};
+  const outputs: Record<string, string | number> = {};
   const sensitiveValues = artifact.params.filter((p) => p.sensitive).map((p) => opts.params[p.name]).filter(Boolean);
   const mask = opts.policy.redaction.mask;
   const r = (s: string) => redact(s, sensitiveValues, mask);
 
-  const substitute = (s: string) => {
-    let out = s;
-    for (const p of artifact.params) {
-      const v = opts.params[p.name];
-      if (v !== undefined) out = out.split(`{{${p.name}}}`).join(v);
-    }
-    return out;
-  };
+  const paramValues = Object.fromEntries(
+    artifact.params.map((p) => [p.name, opts.params[p.name]]).filter(([, v]) => v !== undefined)
+  ) as Record<string, string>;
+  const substitute = (s: string) => substituteText(s, paramValues);
 
   const finish = (partial: Partial<ReplayResult> & Pick<ReplayResult, "status">): ReplayResult => {
     const result = ReplayResultSchema.parse({
@@ -76,6 +137,18 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
       });
     }
   }
+  // Declared param types are enforced too — a capability that says it takes a
+  // number must not be handed "twelve" and discover it three screens later.
+  for (const p of artifact.params) {
+    const supplied = opts.params[p.name];
+    if (p.type === "number" && supplied !== undefined && !/^-?\d+(\.\d+)?$/.test(supplied.trim())) {
+      return finish({
+        status: "failure",
+        error: { stepId: "preflight", expected: `param "${p.name}" is a number`, observed: p.sensitive ? mask : supplied },
+      });
+    }
+  }
+
   const hasRisky = artifact.steps.some((s) => s.action === "click" && s.risky);
   if (hasRisky && (artifact.approval !== "approved" || !opts.allowRisky)) {
     return finish({
@@ -193,8 +266,9 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
               return finish({ status: "business_outcome", outcomeCode: outcome });
             }
             const { value } = await surface.extractNear(substitute(step.anchor), step.cellIndex);
-            outputs[step.output] = value;
-            log.event("extract", { output: step.output, value: r(value) });
+            const spec = artifact.outputs.find((o) => o.name === step.output);
+            outputs[step.output] = coerceOutput(value, spec?.type ?? "string", step.output);
+            log.event("extract", { output: step.output, value: r(value), type: spec?.type ?? "string" });
           } else if (step.action === "navigate") {
             const url = substitute(step.url);
             if (!originAllowed(opts.policy, url)) {
@@ -318,30 +392,7 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
             // manually). Resume at the furthest checkpoint that now holds
             // rather than blindly re-attempting the stuck step.
             const snapNow = await surface.snapshot();
-            // A step with no recorded checkpoint cannot be verified, so it is
-            // never assumed done — it is re-attempted (bounded by
-            // MAX_ESCALATIONS_PER_STEP) rather than silently skipped.
-            const satisfiedHere = !!step.expect && instantExpect(step, snapNow);
-            let resumeAfter = satisfiedHere ? i : -1;
-            if (!satisfiedHere) {
-              for (let j = artifact.steps.length - 1; j > i; j--) {
-                const later = artifact.steps[j];
-                if (later.expect && instantExpect(later, snapNow)) {
-                  resumeAfter = j;
-                  break;
-                }
-              }
-            }
-            // Never fast-forward over a step that produces a declared output:
-            // extract steps carry no checkpoint, so they can only ever be
-            // skipped by this scan, which would return outputs the contract
-            // promises but does not contain.
-            if (resumeAfter > i) {
-              const pendingExtract = artifact.steps.findIndex(
-                (st, idx) => idx > i && idx <= resumeAfter && st.action === "extract"
-              );
-              if (pendingExtract !== -1) resumeAfter = satisfiedHere ? pendingExtract - 1 : -1;
-            }
+            const resumeAfter = resumeTarget(artifact.steps, i, (st) => instantExpect(st, snapNow));
             escalatedInfo = {
               reason: observed,
               humanActions: allHuman,

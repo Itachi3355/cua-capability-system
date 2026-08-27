@@ -166,7 +166,8 @@ export const ReplayResult = z.object({
   runId: z.string(),
   artifact: z.object({ id: z.string(), name: z.string(), version: z.number() }),
   status: z.enum(["success", "business_outcome", "escalated", "failure"]),
-  outputs: z.record(z.string()).default({}),
+  // Values are coerced to the type the artifact declares for each output.
+  outputs: z.record(z.union([z.string(), z.number()])).default({}),
   outcomeCode: z.string().optional(), // set when status === "business_outcome"
   error: z
     .object({

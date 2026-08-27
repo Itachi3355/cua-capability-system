@@ -9,7 +9,7 @@
     "discover": "tsx src/cli.ts discover",
     "replay": "tsx src/cli.ts replay",
     "list": "tsx src/cli.ts list",
-    "test": "tsx tests/locator.test.ts && tsx tests/replay.smoke.ts"
+    "test": "tsx tests/templating.test.ts && tsx tests/resume.test.ts && tsx tests/locator.test.ts && tsx tests/replay.smoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

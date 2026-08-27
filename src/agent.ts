@@ -6,6 +6,7 @@ import { Artifact as ArtifactSchema } from "./types.js";
 import { PlaywrightSurface, cleanStructuralPaths, needsStructuralFallback } from "./surface.js";
 import { actionAllowed, isRiskyName, originAllowed, redact, redactSnapshot, type Policy } from "./policy.js";
 import { RunLogger } from "./logger.js";
+import { substitute as substituteText, templatize as templatizeText, type ParamValues } from "./templating.js";
 import { requestIntervention } from "./escalate.js";
 
 // ---------------------------------------------------------------------------
@@ -149,35 +150,11 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
   const sensitiveValues = input.params.filter((p) => p.sensitive).map((p) => p.value);
   const mask = input.policy.redaction.mask;
 
-  // Template every param value back out of recorded strings so the artifact
-  // is parameterized, not a macro of one concrete run. Replacement is
-  // boundary-aware: a short value ("12") must not rewrite the middle of an
-  // unrelated token ("Branch 120"), which would silently corrupt the artifact.
-  const isWordChar = (c: string) => c !== "" && /[A-Za-z0-9]/.test(c);
-  const templatize = (s: string) => {
-    let out = s;
-    for (const p of input.params) {
-      if (!p.value) continue;
-      const token = `{{${p.name}}}`;
-      let idx = out.indexOf(p.value);
-      while (idx !== -1) {
-        const before = idx > 0 ? out[idx - 1] : "";
-        const after = out[idx + p.value.length] ?? "";
-        if (!isWordChar(before) && !isWordChar(after)) {
-          out = out.slice(0, idx) + token + out.slice(idx + p.value.length);
-          idx = out.indexOf(p.value, idx + token.length);
-        } else {
-          idx = out.indexOf(p.value, idx + 1);
-        }
-      }
-    }
-    return out;
-  };
-  const substitute = (s: string) => {
-    let out = s;
-    for (const p of input.params) out = out.split(`{{${p.name}}}`).join(p.value);
-    return out;
-  };
+  // Templating lives in one shared module so the recorder's templatize and
+  // the executor's substitute cannot drift apart (src/templating.ts).
+  const paramValues: ParamValues = Object.fromEntries(input.params.map((p) => [p.name, p.value]));
+  const templatize = (s: string) => templatizeText(s, paramValues);
+  const substitute = (s: string) => substituteText(s, paramValues);
 
   const steps: Step[] = [];
   const outputs: Artifact["outputs"] = [];

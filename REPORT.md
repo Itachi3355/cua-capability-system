@@ -70,6 +70,11 @@ the actuator, which is what keeps the desktop story credible (§4).
 - **`approval: draft | approved`** gates unattended/risky replay; `version`,
   `schemaVersion`, and `provenance` (which run, which model, which goal) make
   artifacts diffable and auditable.
+- **Declared types are enforced.** A `number` output is coerced (display
+  separators and currency marks stripped) and a value that is not a plain
+  number is a hard failure, not a string passed through under a numeric label;
+  a `number` param is rejected at preflight. A type the engine cannot honor
+  would make the contract decorative.
 - The **result contract** (`ReplayResult`) is part of the schema file on
   purpose: `success | business_outcome | escalated | failure`, with outputs,
   outcome code, or step-level error detail (expected vs observed vs
