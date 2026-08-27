@@ -416,6 +416,29 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
   // human reviewer approves/edits them — they are config, not runtime model calls.
   const enrichment = await proposeOutcomesAndRecoveries(anthropic, input.model, messages, log);
 
+  // Validate the proposals against the one page we know is a success. A
+  // detector whose text is visible on the successful end state is
+  // self-evidently wrong: it would classify every good run as a business
+  // outcome (or fire a recovery on a healthy page). The model cannot see this
+  // — it is guessing at screens it never visited — so the recorder drops them
+  // rather than shipping a draft that misclassifies its own happy path.
+  const successText = (await surface.snapshot()).visibleText.toLowerCase();
+  const contradictsSuccess = (text?: string) => !!text && successText.includes(substitute(text).toLowerCase());
+  const outcomes = enrichment.outcomes.filter((o) => {
+    if (contradictsSuccess(o.when.textVisible)) {
+      log.event("enrichment.rejected", { kind: "outcome", code: o.code, reason: "detector text is visible on the success page" });
+      return false;
+    }
+    return true;
+  });
+  const recoveries = enrichment.recoveries.filter((rule) => {
+    if (contradictsSuccess(rule.when.textVisible)) {
+      log.event("enrichment.rejected", { kind: "recovery", id: rule.id, reason: "trigger text is visible on the success page" });
+      return false;
+    }
+    return true;
+  });
+
   // Model-proposed recovery targets never carry structural paths, and the
   // record-time policy already filtered step targets; this pass is the
   // belt-and-braces guarantee that the persisted artifact holds no
@@ -434,8 +457,8 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
     })),
     outputs,
     steps,
-    outcomes: enrichment.outcomes,
-    recoveries: enrichment.recoveries,
+    outcomes,
+    recoveries,
     success: { textVisible: finishInfo.textVisible, urlContains: finishInfo.urlContains },
     provenance: { discoveryRunId: log.runId, model: input.model, goal: input.goal },
   }));
