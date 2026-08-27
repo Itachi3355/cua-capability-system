@@ -41,3 +41,8 @@ Discovery with both self-correction mechanisms visible in one run, and the artif
 - `probe.detector_observed`: the recorder then replayed its own flow with a sentinel member number (`99999999`), landed on the real not-found screen, and derived `member_not_found` from text observed there — replacing the model's guess ("No members found", which the app never prints). The nested `replay-*` directory is the probe run's own evidence.
 
 Replays of that artifact: member 23456 -> success `$612.40`; member 34567 -> success `$15,002.66`; member 99999 -> `business_outcome` / `member_not_found`.
+
+## `replay-2026-08-27T16-52-06-437Z`, `-09-219Z`, `-11-946Z`
+The three verification replays of that same freshly recorded artifact, in order: member 23456 -> `success` with `savings_balance: "$612.40"`; member 99999 -> `business_outcome` with `outcomeCode: member_not_found`; member 34567 -> `success` with `savings_balance: "$15,002.66"`.
+
+Together these are the point of the whole system: one LLM discovery run, then deterministic replays that generalize to inputs the model never saw and classify a missing record as an answer rather than a crash — with no model in the loop and no hand-editing of the artifact.
