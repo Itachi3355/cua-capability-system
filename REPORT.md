@@ -217,6 +217,13 @@ eliminate it.
   (the model types a `{{placeholder}}`; substitution happens in the executor),
   never appear in logs or artifacts (masked at every write), and password
   field values are excluded from human-action capture.
+Covered by the no-LLM smoke suite, which replays a fixture against the live
+mock app: happy path, a different member (locator generalization), unknown
+member (business outcome), a session-expiry interstitial (recovery), a step
+whose URL falls outside the allowlist (refused before the browser acts), and a
+run whose parameter is marked sensitive (the value appears in neither the log
+nor the result on disk, and the capability still returns its output).
+
 - **Limits, honestly**: name-pattern risk classification misses risky controls
   with bland labels — real deployment needs per-app risk annotations in the
   artifact (reviewable, like outcomes). Screenshots are not redacted, so

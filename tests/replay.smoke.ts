@@ -53,6 +53,30 @@ async function main() {
     assert.strictEqual(r4.status, "success");
     assert.strictEqual(r4.outputs.savings_balance, "$4,821.77");
 
+    console.log("\n-- scenario 5: navigation outside the allowlist is refused --");
+    const offOrigin = structuredClone(artifact);
+    offOrigin.steps[0] = { ...offOrigin.steps[0], url: "https://example.com/members" } as typeof offOrigin.steps[0];
+    const r5 = await replayArtifact(offOrigin, { ...base, params: { member_id: "12345" } });
+    assert.strictEqual(r5.status, "failure");
+    assert.match(r5.error!.expected, /allowed origins/);
+    assert.strictEqual(r5.error!.observed, "https://example.com/members");
+
+    console.log("\n-- scenario 6: a sensitive parameter never reaches disk --");
+    const sensitive = structuredClone(artifact);
+    sensitive.params[0].sensitive = true;
+    const secret = "12345";
+    const r6 = await replayArtifact(sensitive, { ...base, params: { member_id: secret } });
+    assert.strictEqual(r6.status, "success");
+    assert.strictEqual(r6.outputs.savings_balance, "$4,821.77"); // still does its job
+    for (const file of ["log.jsonl", "result.json"]) {
+      const written = fs.readFileSync(`${r6.evidenceDir}/${file}`, "utf8");
+      assert(!written.includes(secret), `${file} leaked the sensitive parameter value`);
+    }
+    assert(
+      fs.readFileSync(`${r6.evidenceDir}/log.jsonl`, "utf8").includes("«redacted»"),
+      "expected the mask in the log"
+    );
+
     console.log("\nreplay.smoke.ts: all scenarios passed");
   } finally {
     server.kill();
