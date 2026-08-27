@@ -1,0 +1,19 @@
+{
+  "runId": "replay-2026-08-27T16-42-10-117Z",
+  "artifact": {
+    "id": "d778974f-e2f1-4420-aff3-203a397dff65",
+    "name": "lookup_member_savings_balance",
+    "version": 1
+  },
+  "status": "failure",
+  "outputs": {},
+  "error": {
+    "stepId": "s4",
+    "expected": "click on {\"role\":\"link\",\"name\":\"Margaret Chen\",\"nearText\":\"{{member_id}}\"}",
+    "observed": "target not resolved: not_found: no element matched role=link name=\"Margaret Chen\" near=\"99999\" (unresolved after 2 human interventions)",
+    "screenshot": "evidence\\replay-2026-08-27T16-42-10-117Z\\02-failure-s4.png"
+  },
+  "startedAt": "2026-08-27T16:42:10.118Z",
+  "finishedAt": "2026-08-27T16:42:56.539Z",
+  "evidenceDir": "evidence\\replay-2026-08-27T16-42-10-117Z"
+}

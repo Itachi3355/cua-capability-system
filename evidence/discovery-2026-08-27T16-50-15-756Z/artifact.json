@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "41ad6127-5da0-4f23-9873-af56f95c29a3",
+  "id": "1e3b58d8-8324-4ecd-a824-fbed7278cb0f",
   "name": "lookup_member_savings_balance",
-  "description": "Looks up a member by their member number ({{member_id}}) in the Meridian CU Teller Console and reports their current savings account balance.",
+  "description": "Look up a member by their member number in the Teller Console and report their current savings account balance.",
   "version": 1,
-  "createdAt": "2026-08-27T16:51:40.938Z",
+  "createdAt": "2026-08-27T16:50:37.486Z",
   "approval": "draft",
   "app": {
     "label": "Meridian CU Teller Console",
@@ -23,7 +23,7 @@
     {
       "name": "savings_balance",
       "type": "string",
-      "description": "Current savings account balance for member {{member_id}} (Margaret Chen)"
+      "description": "Current savings account balance for member {{member_id}}"
     }
   ],
   "steps": [
@@ -51,7 +51,7 @@
     },
     {
       "id": "s2",
-      "intent": "Enter member number",
+      "intent": "Enter member number to search",
       "timeoutMs": 10000,
       "action": "type",
       "target": {
@@ -65,7 +65,7 @@
     },
     {
       "id": "s3",
-      "intent": "Search for member",
+      "intent": "Search for member {{member_id}}",
       "expect": {
         "urlContains": "/members?q={{member_id}}"
       },
@@ -80,7 +80,7 @@
     },
     {
       "id": "s4",
-      "intent": "Open member detail page",
+      "intent": "Open Margaret Chen's member detail page",
       "expect": {
         "urlContains": "/members/{{member_id}}"
       },
@@ -94,35 +94,50 @@
       "risky": false
     },
     {
-      "id": "s6",
-      "intent": "Narrow extraction to just the balance value",
+      "id": "s5",
+      "intent": "Extract the savings account balance value",
       "timeoutMs": 10000,
       "action": "extract",
       "anchor": "Savings",
-      "cellIndex": 1,
       "output": "savings_balance"
     }
   ],
   "outcomes": [
     {
       "code": "member_not_found",
-      "description": "The search for the specified member number or name returned no matching records in the credit union system.",
+      "description": "The search for a member using the provided member number or name returned no matching records.",
       "source": "observed",
       "when": {
         "textVisible": "Verify the member number and try again."
       }
     },
     {
-      "code": "invalid_search_input",
-      "description": "Search input was empty or invalid",
+      "code": "MEMBER_NOT_FOUND",
+      "description": "Search returns no matching member record",
       "source": "proposed",
       "when": {
-        "textVisible": "Please enter a member number or name"
+        "textVisible": "No members found"
       }
     },
     {
-      "code": "account_restricted",
-      "description": "Member account is restricted or flagged and details cannot be shown",
+      "code": "INVALID_MEMBER_NUMBER",
+      "description": "Input validation error for malformed member number",
+      "source": "proposed",
+      "when": {
+        "textVisible": "Invalid member number"
+      }
+    },
+    {
+      "code": "NO_SAVINGS_ACCOUNT",
+      "description": "Member record exists but has no savings account",
+      "source": "proposed",
+      "when": {
+        "textVisible": "No savings account on file"
+      }
+    },
+    {
+      "code": "ACCOUNT_RESTRICTED",
+      "description": "Member account is flagged or restricted from view",
       "source": "proposed",
       "when": {
         "textVisible": "Account restricted"
@@ -131,8 +146,8 @@
   ],
   "recoveries": [
     {
-      "id": "session_expired",
-      "description": "Session expired interstitial requires re-login to resume",
+      "id": "SESSION_EXPIRED",
+      "description": "Session expired interstitial requiring re-login",
       "when": {
         "textVisible": "Session expired"
       },
@@ -145,15 +160,15 @@
       "maxAttempts": 1
     },
     {
-      "id": "confirm_dialog",
-      "description": "Generic confirmation dialog blocking navigation",
+      "id": "SECURITY_TIMEOUT_CONTINUE",
+      "description": "Idle timeout warning dialog with continue option",
       "when": {
-        "textVisible": "Are you sure you want to continue?"
+        "textVisible": "Your session is about to expire"
       },
       "do": {
         "click": {
           "role": "button",
-          "name": "OK"
+          "name": "Continue"
         }
       },
       "maxAttempts": 1
@@ -161,10 +176,10 @@
   ],
   "success": {
     "urlContains": "/members/{{member_id}}",
-    "textVisible": "Member #: {{member_id}}"
+    "textVisible": "Savings"
   },
   "provenance": {
-    "discoveryRunId": "discovery-2026-08-27T16-51-16-190Z",
+    "discoveryRunId": "discovery-2026-08-27T16-50-15-756Z",
     "model": "claude-sonnet-5",
     "goal": "Look up the member by their member number and report their current savings account balance"
   }

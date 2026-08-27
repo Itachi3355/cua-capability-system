@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "41ad6127-5da0-4f23-9873-af56f95c29a3",
+  "id": "cccc89ca-2c54-47be-85e2-5cfcca5151c1",
   "name": "lookup_member_savings_balance",
-  "description": "Looks up a member by their member number ({{member_id}}) in the Meridian CU Teller Console and reports their current savings account balance.",
+  "description": "Look up a member by member number and report their current savings account balance",
   "version": 1,
-  "createdAt": "2026-08-27T16:51:40.938Z",
+  "createdAt": "2026-08-27T16:49:19.851Z",
   "approval": "draft",
   "app": {
     "label": "Meridian CU Teller Console",
@@ -23,7 +23,7 @@
     {
       "name": "savings_balance",
       "type": "string",
-      "description": "Current savings account balance for member {{member_id}} (Margaret Chen)"
+      "description": "Current savings account balance for member {{member_id}}"
     }
   ],
   "steps": [
@@ -45,13 +45,13 @@
       "target": {
         "role": "link",
         "name": "Member Search",
-        "nearText": "|"
+        "nearText": "»"
       },
       "risky": false
     },
     {
       "id": "s2",
-      "intent": "Enter member number",
+      "intent": "Enter member number to search",
       "timeoutMs": 10000,
       "action": "type",
       "target": {
@@ -80,7 +80,7 @@
     },
     {
       "id": "s4",
-      "intent": "Open member detail page",
+      "intent": "Open member detail page for Margaret Chen",
       "expect": {
         "urlContains": "/members/{{member_id}}"
       },
@@ -106,18 +106,18 @@
   "outcomes": [
     {
       "code": "member_not_found",
-      "description": "The search for the specified member number or name returned no matching records in the credit union system.",
+      "description": "The search returned no matching member records, indicating the provided member number or name does not exist in the system.",
       "source": "observed",
       "when": {
         "textVisible": "Verify the member number and try again."
       }
     },
     {
-      "code": "invalid_search_input",
-      "description": "Search input was empty or invalid",
+      "code": "invalid_member_number",
+      "description": "The entered member number is not valid",
       "source": "proposed",
       "when": {
-        "textVisible": "Please enter a member number or name"
+        "textVisible": "Invalid member number"
       }
     },
     {
@@ -126,6 +126,14 @@
       "source": "proposed",
       "when": {
         "textVisible": "Account restricted"
+      }
+    },
+    {
+      "code": "search_error",
+      "description": "A system error occurred while searching for the member",
+      "source": "proposed",
+      "when": {
+        "textVisible": "An error occurred while processing your request"
       }
     }
   ],
@@ -148,7 +156,7 @@
       "id": "confirm_dialog",
       "description": "Generic confirmation dialog blocking navigation",
       "when": {
-        "textVisible": "Are you sure you want to continue?"
+        "textVisible": "Are you sure you want to continue"
       },
       "do": {
         "click": {
@@ -157,14 +165,28 @@
         }
       },
       "maxAttempts": 1
+    },
+    {
+      "id": "dismiss_notice",
+      "description": "Dismissable system notice banner",
+      "when": {
+        "textVisible": "System Notice"
+      },
+      "do": {
+        "click": {
+          "role": "button",
+          "name": "Dismiss"
+        }
+      },
+      "maxAttempts": 1
     }
   ],
   "success": {
     "urlContains": "/members/{{member_id}}",
-    "textVisible": "Member #: {{member_id}}"
+    "textVisible": "Savings"
   },
   "provenance": {
-    "discoveryRunId": "discovery-2026-08-27T16-51-16-190Z",
+    "discoveryRunId": "discovery-2026-08-27T16-48-53-678Z",
     "model": "claude-sonnet-5",
     "goal": "Look up the member by their member number and report their current savings account balance"
   }

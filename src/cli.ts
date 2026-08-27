@@ -84,6 +84,7 @@ async function main() {
       maxSteps: Number(flags["max-steps"] ?? 25),
       model: (flags.model as string) || process.env.CUA_MODEL || "claude-sonnet-5",
       headful: !flags.headless,
+      skipProbe: Boolean(flags["no-probe"]),
     });
     if (!artifact) {
       console.error(`\nDiscovery did not produce an artifact. Evidence: ${evidenceDir}`);

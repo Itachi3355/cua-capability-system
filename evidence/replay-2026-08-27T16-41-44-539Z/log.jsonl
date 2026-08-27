@@ -1,0 +1,15 @@
+{"ts":"2026-08-27T16:41:44.541Z","type":"replay.start","artifact":"lookup_member_savings_balance","version":1,"params":{"member_id":"23456"}}
+{"ts":"2026-08-27T16:41:45.084Z","type":"step.start","id":"s0","action":"navigate","intent":"Open the application entry point"}
+{"ts":"2026-08-27T16:41:45.158Z","type":"step.ok","id":"s0","attempts":1}
+{"ts":"2026-08-27T16:41:45.158Z","type":"step.start","id":"s1","action":"click","intent":"Go to Member Search page"}
+{"ts":"2026-08-27T16:41:45.411Z","type":"step.ok","id":"s1","attempts":1}
+{"ts":"2026-08-27T16:41:45.411Z","type":"step.start","id":"s2","action":"type","intent":"Enter member number to search"}
+{"ts":"2026-08-27T16:41:45.450Z","type":"step.ok","id":"s2","attempts":1}
+{"ts":"2026-08-27T16:41:45.450Z","type":"step.start","id":"s3","action":"click","intent":"Search for member"}
+{"ts":"2026-08-27T16:41:45.607Z","type":"step.ok","id":"s3","attempts":1}
+{"ts":"2026-08-27T16:41:45.608Z","type":"step.start","id":"s4","action":"click","intent":"Open member detail page for Margaret Chen"}
+{"ts":"2026-08-27T16:41:45.700Z","type":"step.ok","id":"s4","attempts":1}
+{"ts":"2026-08-27T16:41:45.700Z","type":"step.start","id":"s6","action":"extract","intent":"Extract just the balance value for savings account"}
+{"ts":"2026-08-27T16:41:45.704Z","type":"string","output":"savings_balance","value":"$612.40"}
+{"ts":"2026-08-27T16:41:45.705Z","type":"step.ok","id":"s6","attempts":1}
+{"ts":"2026-08-27T16:41:45.804Z","type":"replay.result","runId":"replay-2026-08-27T16-41-44-539Z","artifact":{"id":"d778974f-e2f1-4420-aff3-203a397dff65","name":"lookup_member_savings_balance","version":1},"status":"success","outputs":{"savings_balance":"$612.40"},"startedAt":"2026-08-27T16:41:44.540Z","finishedAt":"2026-08-27T16:41:45.804Z","evidenceDir":"evidence\\replay-2026-08-27T16-41-44-539Z"}

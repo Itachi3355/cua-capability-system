@@ -1,0 +1,8 @@
+{
+  "reason": "target not resolved: not_found: no element matched role=link name=\"Margaret Chen\" near=\"99999\"",
+  "goalOrCapability": "lookup_member_savings_balance v1",
+  "stepId": "s4",
+  "currentUrl": "http://localhost:4173/members?q=99999",
+  "screenshot": "evidence\\replay-2026-08-27T16-42-10-117Z\\01-failure-s4.png",
+  "instructions": "Automation could not complete step \"s4\" (Open member detail page for Margaret Chen). Either perform that step manually, or fix the blocking state and leave the step to automation."
+}

@@ -304,7 +304,10 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
                 resolution = res;
               }
             }
-            if (!resolution) throw new StepError(`target not resolved: ${lastDetail}`);
+            if (!resolution) {
+              const seen = snap ? `; page: "${snap.visibleText.slice(0, 400)}"` : "";
+              throw new StepError(`target not resolved: ${lastDetail}${seen}`);
+            }
             if (resolution.method === "structural") {
               log.event("locator.structural_fallback", { stepId: step.id, target: step.target });
             }

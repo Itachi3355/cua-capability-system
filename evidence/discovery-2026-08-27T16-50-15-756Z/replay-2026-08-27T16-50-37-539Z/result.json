@@ -1,0 +1,19 @@
+{
+  "runId": "replay-2026-08-27T16-50-37-539Z",
+  "artifact": {
+    "id": "1e3b58d8-8324-4ecd-a824-fbed7278cb0f",
+    "name": "lookup_member_savings_balance",
+    "version": 1
+  },
+  "status": "failure",
+  "outputs": {},
+  "error": {
+    "stepId": "s4",
+    "expected": "click on {\"role\":\"link\",\"name\":\"Margaret Chen\",\"nearText\":\"{{member_id}}\"}",
+    "observed": "target not resolved: not_found: no element matched role=link name=\"Margaret Chen\" near=\"99999999\"; page: \"MERIDIAN CREDIT UNION Teller Console v3.2.11 Home | Member Search | Reports | Administration Member Search Member # or Name: No members matched your search. Verify the member number and try again. For internal use only. Operator: T-0447\"",
+    "screenshot": "evidence\\discovery-2026-08-27T16-50-15-756Z\\replay-2026-08-27T16-50-37-539Z\\00-failure-s4.png"
+  },
+  "startedAt": "2026-08-27T16:50:37.540Z",
+  "finishedAt": "2026-08-27T16:50:48.068Z",
+  "evidenceDir": "evidence\\discovery-2026-08-27T16-50-15-756Z\\replay-2026-08-27T16-50-37-539Z"
+}

@@ -1,0 +1,15 @@
+{
+  "runId": "replay-2026-08-27T16-41-44-539Z",
+  "artifact": {
+    "id": "d778974f-e2f1-4420-aff3-203a397dff65",
+    "name": "lookup_member_savings_balance",
+    "version": 1
+  },
+  "status": "success",
+  "outputs": {
+    "savings_balance": "$612.40"
+  },
+  "startedAt": "2026-08-27T16:41:44.540Z",
+  "finishedAt": "2026-08-27T16:41:45.804Z",
+  "evidenceDir": "evidence\\replay-2026-08-27T16-41-44-539Z"
+}

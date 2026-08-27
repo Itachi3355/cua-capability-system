@@ -61,6 +61,15 @@ the actuator, which is what keeps the desktop story credible (§4).
   path kept only as a flagged last resort. Reasoning: in legacy apps the
   markup is hostile but what an *operator perceives* is stable; that is also
   exactly the representation an accessibility-tree or OCR surface can produce.
+- **The important detector is observed, not guessed.** After a successful run
+  the recorder replays the flow with a sentinel input, reads the page the flow
+  actually lands on, and derives the not-found detector from text present there
+  and absent from the success page (never text containing the sentinel itself).
+  That detector is marked `source: "observed"`; everything the model proposed
+  for screens it never visited stays `source: "proposed"` for review. This is
+  what makes a freshly recorded artifact handle "no such member" as a business
+  outcome without hand-editing. The probe is skipped for flows with a risky
+  step — it must never drive a mutation.
 - **Drafts are honest about what is verified.** Detectors the model proposes
   describe screens it never visited, so they are guesses until reviewed — that
   is what `draft -> approved` is for. The recorder auto-rejects the one class it

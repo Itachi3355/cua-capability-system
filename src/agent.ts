@@ -7,6 +7,7 @@ import { PlaywrightSurface, cleanStructuralPaths, needsStructuralFallback } from
 import { actionAllowed, isRiskyName, originAllowed, redact, redactSnapshot, type Policy } from "./policy.js";
 import { RunLogger } from "./logger.js";
 import { substitute as substituteText, templatize as templatizeText, type ParamValues } from "./templating.js";
+import { replayArtifact } from "./replay.js";
 import { requestIntervention } from "./escalate.js";
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,8 @@ export interface DiscoveryInput {
   maxSteps: number;
   model: string;
   headful: boolean;
+  // Skip the negative-path probe (see probeNegativePath).
+  skipProbe?: boolean;
 }
 
 const TOOLS: Anthropic.Tool[] = [
@@ -452,8 +455,18 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
   }));
 
   log.event("discovery.success", { artifactId: artifact.id, name: artifact.name, steps: steps.length });
-  log.writeFile("artifact.json", JSON.stringify(artifact, null, 2));
   await surface.close();
+
+  // Probe the negative path: the most important detector on a lookup flow is
+  // "the thing you asked for does not exist", and the model can only guess at
+  // that screen's wording because the happy-path run never saw it. Replay the
+  // recorded flow deterministically with a sentinel input, read the text off
+  // the page it actually lands on, and record the detector as observed.
+  if (!input.skipProbe) {
+    await probeNegativePath(artifact, successText, input, anthropic, log);
+  }
+
+  log.writeFile("artifact.json", JSON.stringify(artifact, null, 2));
   log.close();
   return { artifact, evidenceDir: log.dir };
 }
@@ -509,11 +522,17 @@ async function proposeOutcomesAndRecoveries(
     const text = response.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "{}";
     const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
     log.event("enrichment.proposed", json);
+    // Outcome codes are part of the caller-facing contract, so they are
+    // normalized here rather than left in whatever case the model returned —
+    // otherwise MEMBER_NOT_FOUND and member_not_found coexist as two detectors
+    // for one condition.
+    const snake = (v: unknown) => String(v ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
     return {
-      outcomes: (json.outcomes ?? []).slice(0, 8),
+      outcomes: (json.outcomes ?? []).slice(0, 8).map((o: any) => ({ ...o, code: snake(o.code) })),
       recoveries: (json.recoveries ?? []).slice(0, 4).map((r: any) => ({
         maxAttempts: 1,
         ...r,
+        id: snake(r.id),
         do: { click: { structuralPath: undefined, nearText: undefined, nth: undefined, ...r.do.click } },
       })),
     };
@@ -557,4 +576,147 @@ export function filterEnrichment(
     return false;
   });
   return { outcomes: keptOutcomes, recoveries: keptRecoveries, rejected };
+}
+
+// ---------------------------------------------------------------------------
+// Negative-path probe.
+//
+// A lookup capability's most valuable detector is "no such record", and it is
+// exactly the one the model cannot verify: the successful run never visits
+// that screen, so any wording it proposes is a guess. A guess that misses does
+// real damage — the not-found page becomes a hard failure instead of the
+// business outcome the caller needs.
+//
+// So the recorder goes and looks. It replays the recorded flow deterministically
+// with a sentinel value, reads the page the flow actually lands on, and derives
+// the detector from text that is present there and absent from the success page.
+// The fragment is evidence, never a guess; only the naming is left to the model,
+// with a deterministic fallback.
+//
+// Skipped when the flow has no parameters to vary, or contains a risky step —
+// probing must never drive a mutation.
+// ---------------------------------------------------------------------------
+
+// A value shaped like the recorded one but improbable enough not to exist.
+export function sentinelFor(recorded: string): string {
+  if (/^\d+$/.test(recorded)) return "9".repeat(Math.max(recorded.length + 3, 8));
+  return "zzz-no-such-value-zzz";
+}
+
+// Text present on the probe page but not on the success page, earliest first —
+// the distinctive part of the failure screen.
+export function distinctiveFragment(
+  probeText: string,
+  successText: string,
+  sentinels: string[] = []
+): string | undefined {
+  const success = successText.toLowerCase();
+  // The sentinel is our own invention. A fragment containing it would be a
+  // detector that can never match a real caller's input.
+  const carriesSentinel = (t: string) => sentinels.some((v) => v && t.includes(v));
+  const chunks = probeText
+    .split(/(?<=[.!?])\s+/)
+    .map((c) => c.trim())
+    .filter((c) => c.length >= 8 && c.length <= 120);
+  for (const chunk of chunks) {
+    if (success.includes(chunk.toLowerCase()) || carriesSentinel(chunk)) continue;
+    // Trim to the first sentence-ish span so the detector stays a short literal.
+    const fragment = chunk.slice(0, 80).trim();
+    if (fragment.length >= 8 && !success.includes(fragment.toLowerCase()) && !carriesSentinel(fragment)) return fragment;
+  }
+  return undefined;
+}
+
+async function probeNegativePath(
+  artifact: Artifact,
+  successText: string,
+  input: DiscoveryInput,
+  anthropic: Anthropic,
+  log: RunLogger
+): Promise<void> {
+  if (artifact.params.length === 0) return log.event("probe.skipped", { reason: "no parameters to vary" });
+  if (artifact.steps.some((s) => s.action === "click" && s.risky)) {
+    return log.event("probe.skipped", { reason: "flow contains a risky step; probing must not drive a mutation" });
+  }
+
+  const sentinels = Object.fromEntries(
+    artifact.params.map((p) => [p.name, sentinelFor(input.params.find((ip) => ip.name === p.name)?.value ?? "")])
+  );
+  log.event("probe.start", { sentinels });
+
+  const result = await replayArtifact(artifact, {
+    params: sentinels,
+    policy: input.policy,
+    headful: false,
+    allowRisky: false,
+    escalate: false,
+    evidenceBase: log.dir,
+  });
+
+  if (result.status === "business_outcome") {
+    // A proposed detector already covers this screen; promote it to observed.
+    const hit = artifact.outcomes.find((o) => o.code === result.outcomeCode);
+    if (hit) hit.source = "observed";
+    return log.event("probe.confirmed", { outcome: result.outcomeCode, evidenceDir: result.evidenceDir });
+  }
+  if (result.status !== "failure" || !result.error) {
+    return log.event("probe.inconclusive", { status: result.status, evidenceDir: result.evidenceDir });
+  }
+
+  const pageMatch = /page: "([\s\S]*)"$/.exec(result.error.observed);
+  const probeText = pageMatch?.[1];
+  if (!probeText) return log.event("probe.inconclusive", { reason: "no page text captured", stepId: result.error.stepId });
+
+  const fragment = distinctiveFragment(probeText, successText, Object.values(sentinels));
+  if (!fragment) return log.event("probe.inconclusive", { reason: "probe page is not distinguishable from the success page" });
+
+  const named = await nameOutcome(anthropic, input.model, fragment, probeText, log);
+  const existing = artifact.outcomes.findIndex((o) => o.code === named.code);
+  const detector = {
+    code: named.code,
+    description: named.description,
+    source: "observed" as const,
+    when: { textVisible: fragment },
+  };
+  if (existing >= 0) artifact.outcomes[existing] = detector;
+  else artifact.outcomes.unshift(detector);
+
+  log.event("probe.detector_observed", {
+    code: detector.code,
+    textVisible: fragment,
+    replacedProposed: existing >= 0,
+    stepId: result.error.stepId,
+    evidenceDir: result.evidenceDir,
+  });
+}
+
+// The fragment is fixed by observation; the model only names it.
+async function nameOutcome(
+  anthropic: Anthropic,
+  model: string,
+  fragment: string,
+  probeText: string,
+  log: RunLogger
+): Promise<{ code: string; description: string }> {
+  const fallback = {
+    code: fragment.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").split("_").slice(0, 4).join("_"),
+    description: `Observed when the flow was probed with a value that does not exist: "${fragment}"`,
+  };
+  try {
+    const res = await anthropic.messages.create({
+      model,
+      max_tokens: 300,
+      system:
+        'A UI flow was replayed with an input that does not exist. Name the resulting business outcome for a calling agent. Respond ONLY with JSON: {"code": "snake_case_outcome_code", "description": "one sentence"}. Prefer conventional codes such as member_not_found, record_not_found, or no_results.',
+      messages: [{ role: "user", content: `Page text:\n${probeText.slice(0, 1200)}\n\nDistinctive fragment: ${fragment}` }],
+    });
+    const text = res.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
+    const parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+    if (typeof parsed.code === "string" && /^[a-z0-9_]+$/.test(parsed.code)) {
+      return { code: parsed.code, description: String(parsed.description ?? fallback.description) };
+    }
+  } catch (err) {
+    log.event("probe.naming_failed", { error: (err as Error).message });
+  }
+  return fallback;
 }

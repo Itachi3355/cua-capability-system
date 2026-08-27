@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "41ad6127-5da0-4f23-9873-af56f95c29a3",
+  "id": "d778974f-e2f1-4420-aff3-203a397dff65",
   "name": "lookup_member_savings_balance",
-  "description": "Looks up a member by their member number ({{member_id}}) in the Meridian CU Teller Console and reports their current savings account balance.",
+  "description": "Look up a member by member number ({{member_id}}) and report their current savings account balance",
   "version": 1,
-  "createdAt": "2026-08-27T16:51:40.938Z",
+  "createdAt": "2026-08-27T16:39:22.027Z",
   "approval": "draft",
   "app": {
     "label": "Meridian CU Teller Console",
@@ -23,7 +23,7 @@
     {
       "name": "savings_balance",
       "type": "string",
-      "description": "Current savings account balance for member {{member_id}} (Margaret Chen)"
+      "description": "Current savings account balance for member {{member_id}}"
     }
   ],
   "steps": [
@@ -45,13 +45,13 @@
       "target": {
         "role": "link",
         "name": "Member Search",
-        "nearText": "|"
+        "nearText": "»"
       },
       "risky": false
     },
     {
       "id": "s2",
-      "intent": "Enter member number",
+      "intent": "Enter member number to search",
       "timeoutMs": 10000,
       "action": "type",
       "target": {
@@ -80,7 +80,7 @@
     },
     {
       "id": "s4",
-      "intent": "Open member detail page",
+      "intent": "Open member detail page for Margaret Chen",
       "expect": {
         "urlContains": "/members/{{member_id}}"
       },
@@ -95,7 +95,7 @@
     },
     {
       "id": "s6",
-      "intent": "Narrow extraction to just the balance value",
+      "intent": "Extract just the balance value for savings account",
       "timeoutMs": 10000,
       "action": "extract",
       "anchor": "Savings",
@@ -106,26 +106,23 @@
   "outcomes": [
     {
       "code": "member_not_found",
-      "description": "The search for the specified member number or name returned no matching records in the credit union system.",
-      "source": "observed",
+      "description": "No member matches the given member number or name",
       "when": {
-        "textVisible": "Verify the member number and try again."
+        "textVisible": "No members found"
       }
     },
     {
       "code": "invalid_search_input",
-      "description": "Search input was empty or invalid",
-      "source": "proposed",
+      "description": "Search was submitted without a valid member number or name",
       "when": {
         "textVisible": "Please enter a member number or name"
       }
     },
     {
-      "code": "account_restricted",
-      "description": "Member account is restricted or flagged and details cannot be shown",
-      "source": "proposed",
+      "code": "account_closed",
+      "description": "Member account is closed or inactive",
       "when": {
-        "textVisible": "Account restricted"
+        "textVisible": "Account Closed"
       }
     }
   ],
@@ -134,7 +131,7 @@
       "id": "session_expired",
       "description": "Session expired interstitial requires re-login to resume",
       "when": {
-        "textVisible": "Session expired"
+        "textVisible": "Session Expired"
       },
       "do": {
         "click": {
@@ -145,15 +142,15 @@
       "maxAttempts": 1
     },
     {
-      "id": "confirm_dialog",
-      "description": "Generic confirmation dialog blocking navigation",
+      "id": "session_timeout_continue",
+      "description": "Idle timeout warning dialog with continue option",
       "when": {
-        "textVisible": "Are you sure you want to continue?"
+        "textVisible": "Your session has timed out"
       },
       "do": {
         "click": {
           "role": "button",
-          "name": "OK"
+          "name": "Continue"
         }
       },
       "maxAttempts": 1
@@ -161,10 +158,10 @@
   ],
   "success": {
     "urlContains": "/members/{{member_id}}",
-    "textVisible": "Member #: {{member_id}}"
+    "textVisible": "Savings"
   },
   "provenance": {
-    "discoveryRunId": "discovery-2026-08-27T16-51-16-190Z",
+    "discoveryRunId": "discovery-2026-08-27T16-38-55-993Z",
     "model": "claude-sonnet-5",
     "goal": "Look up the member by their member number and report their current savings account balance"
   }

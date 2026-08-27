@@ -88,6 +88,10 @@ export type Step = z.infer<typeof Step>;
 export const OutcomeDetector = z.object({
   code: z.string(), // e.g. "member_not_found"
   description: z.string(),
+  // "observed": the recorder drove the flow into this state and read the text
+  // off the real page. "proposed": the model suggested it for a screen it never
+  // visited — plausible, unverified, and the reviewer's job before approval.
+  source: z.enum(["observed", "proposed"]).default("proposed"),
   when: z.object({
     textVisible: z.string().optional(),
     urlContains: z.string().optional(),

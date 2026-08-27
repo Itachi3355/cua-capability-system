@@ -33,3 +33,11 @@ Bounded escalation: same sabotaged artifact, but the operator handed control bac
 
 ## `replay-2026-08-27T03-44-57-890Z`
 Post-cleanup determinism check: the same capability replayed for a third member (34567, `$15,002.66`) *after* the structural-path policy stripped 11 DOM fingerprints from the saved artifacts. Semantic descriptors alone resolved every control — evidence that the retained locators, not the removed structural paths, were doing the work.
+
+## `discovery-2026-08-27T16-51-16-190Z`
+Discovery with both self-correction mechanisms visible in one run, and the artifact it produced is the one committed in `artifacts/` — no hand-editing.
+
+- `enrichment.rejected`: the model proposed an outcome detector keyed on "Accounts", a heading present on every member page. It would have classified every successful replay as a business outcome. Rejected automatically because its text appears on the observed success page.
+- `probe.detector_observed`: the recorder then replayed its own flow with a sentinel member number (`99999999`), landed on the real not-found screen, and derived `member_not_found` from text observed there — replacing the model's guess ("No members found", which the app never prints). The nested `replay-*` directory is the probe run's own evidence.
+
+Replays of that artifact: member 23456 -> success `$612.40`; member 34567 -> success `$15,002.66`; member 99999 -> `business_outcome` / `member_not_found`.
