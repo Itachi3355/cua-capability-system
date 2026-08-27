@@ -150,10 +150,27 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
   const mask = input.policy.redaction.mask;
 
   // Template every param value back out of recorded strings so the artifact
-  // is parameterized, not a macro of one concrete run.
+  // is parameterized, not a macro of one concrete run. Replacement is
+  // boundary-aware: a short value ("12") must not rewrite the middle of an
+  // unrelated token ("Branch 120"), which would silently corrupt the artifact.
+  const isWordChar = (c: string) => c !== "" && /[A-Za-z0-9]/.test(c);
   const templatize = (s: string) => {
     let out = s;
-    for (const p of input.params) out = out.split(p.value).join(`{{${p.name}}}`);
+    for (const p of input.params) {
+      if (!p.value) continue;
+      const token = `{{${p.name}}}`;
+      let idx = out.indexOf(p.value);
+      while (idx !== -1) {
+        const before = idx > 0 ? out[idx - 1] : "";
+        const after = out[idx + p.value.length] ?? "";
+        if (!isWordChar(before) && !isWordChar(after)) {
+          out = out.slice(0, idx) + token + out.slice(idx + p.value.length);
+          idx = out.indexOf(p.value, idx + token.length);
+        } else {
+          idx = out.indexOf(p.value, idx + 1);
+        }
+      }
+    }
     return out;
   };
   const substitute = (s: string) => {
@@ -312,7 +329,9 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
         });
         snap = redactSnapshot(await surface.snapshot(), sensitiveValues, mask);
         resultText = `A human operator intervened. Fresh observation:\n${formatSnapshot(snap)}\nContinue toward the goal, or finish if it is now complete.`;
-        gaveUp = false; // human unblocked us; artifact stays draft either way
+        // gaveUp stays set: the terminal log event must record that the agent
+        // declared itself stuck and a human was pulled in, even if the run
+        // later ends by exhausting its step budget.
         messages.push({ role: "user", content: [{ type: "tool_result", tool_use_id: toolUse.id, content: resultText }] });
         continue;
       }
@@ -407,7 +426,9 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
   await surface.screenshot(finalShot);
 
   if (!finishInfo) {
-    log.event("discovery.failed", { reason: gaveUp ? "gave_up" : "max_steps_or_no_finish" });
+    log.event("discovery.failed", {
+      reason: gaveUp ? "gave_up (human intervened, run did not finish)" : "max_steps_or_no_finish",
+    });
     await surface.close();
     log.close();
     return { artifact: null, evidenceDir: log.dir };

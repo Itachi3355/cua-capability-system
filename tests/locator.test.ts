@@ -95,6 +95,23 @@ assert.strictEqual(needsStructuralFallback("Details", "row", true), true);
   assert(!("error" in res) && res.method === "semantic-exact");
 }
 
+// a recorded nth survives scoring drift: one candidate pulling ahead on score
+// must not silently replace the recorded row
+{
+  const a = el({ cuaId: "a", name: "Details", nearText: "row" });
+  const b = el({ cuaId: "b", name: "Details", nearText: "row" });
+  const c = el({ cuaId: "c", name: "Details", nearText: "row extra" }); // scores higher via partial nearText only
+  const res = resolveDescriptor({ role: "link", name: "Details", nearText: "row", nth: 1 }, snap([a, b, c]));
+  assert(!("error" in res) && res.element.cuaId === "b");
+}
+
+// nth pointing past the candidates is an explicit error, not a wrong click
+{
+  const a = el({ cuaId: "a", name: "Details", nearText: "row" });
+  const res = resolveDescriptor({ role: "link", name: "Details", nearText: "row", nth: 3 }, snap([a]));
+  assert("error" in res && res.error === "not_found");
+}
+
 console.log("locator.test.ts: all assertions passed");
 
 // short-fragment substring must NOT win a fuzzy match (unanchored-substring guard)

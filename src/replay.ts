@@ -102,21 +102,23 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
 
   const checkOutcome = (snap: Snapshot): string | undefined => {
     for (const o of artifact.outcomes) {
-      const textOk = !o.when.textVisible || snap.visibleText.toLowerCase().includes(o.when.textVisible.toLowerCase());
+      const wantText = o.when.textVisible ? substitute(o.when.textVisible) : undefined;
+      const textOk = !wantText || snap.visibleText.toLowerCase().includes(wantText.toLowerCase());
       const urlOk = !o.when.urlContains || snap.url.includes(substitute(o.when.urlContains));
       if ((o.when.textVisible || o.when.urlContains) && textOk && urlOk) return o.code;
     }
     return undefined;
   };
 
-  const tryRecover = async (snap: Snapshot, attempted: Set<string>): Promise<boolean> => {
+  const tryRecover = async (snap: Snapshot, used: Map<string, number>): Promise<boolean> => {
     for (const rule of artifact.recoveries) {
-      if (attempted.has(rule.id)) continue;
+      const spent = used.get(rule.id) ?? 0;
+      if (spent >= rule.maxAttempts) continue;
       if (snap.visibleText.toLowerCase().includes(rule.when.textVisible.toLowerCase())) {
         const res = resolveDescriptor(rule.do.click, snap);
         if ("error" in res) continue;
-        attempted.add(rule.id);
-        log.event("recovery.applied", { rule: rule.id, description: rule.description });
+        used.set(rule.id, spent + 1);
+        log.event("recovery.applied", { rule: rule.id, description: rule.description, attempt: spent + 1 });
         await surface.click(res.element.cuaId);
         return true;
       }
@@ -173,7 +175,7 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
         });
       }
 
-      const attemptedRecoveries = new Set<string>();
+      const attemptedRecoveries = new Map<string, number>();
       let attempts = 0;
       let escalationsThisStep = 0;
       const MAX_STEP_ATTEMPTS = 3; // initial + recovery retry + one transient retry
@@ -316,7 +318,10 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
             // manually). Resume at the furthest checkpoint that now holds
             // rather than blindly re-attempting the stuck step.
             const snapNow = await surface.snapshot();
-            const satisfiedHere = !step.expect || instantExpect(step, snapNow);
+            // A step with no recorded checkpoint cannot be verified, so it is
+            // never assumed done — it is re-attempted (bounded by
+            // MAX_ESCALATIONS_PER_STEP) rather than silently skipped.
+            const satisfiedHere = !!step.expect && instantExpect(step, snapNow);
             let resumeAfter = satisfiedHere ? i : -1;
             if (!satisfiedHere) {
               for (let j = artifact.steps.length - 1; j > i; j--) {
@@ -326,6 +331,16 @@ export async function replayArtifact(artifact: Artifact, opts: ReplayOptions): P
                   break;
                 }
               }
+            }
+            // Never fast-forward over a step that produces a declared output:
+            // extract steps carry no checkpoint, so they can only ever be
+            // skipped by this scan, which would return outputs the contract
+            // promises but does not contain.
+            if (resumeAfter > i) {
+              const pendingExtract = artifact.steps.findIndex(
+                (st, idx) => idx > i && idx <= resumeAfter && st.action === "extract"
+              );
+              if (pendingExtract !== -1) resumeAfter = satisfiedHere ? pendingExtract - 1 : -1;
             }
             escalatedInfo = {
               reason: observed,

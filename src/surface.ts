@@ -216,7 +216,13 @@ export class PlaywrightSurface implements Surface {
     })(${JSON.stringify(anchor)})`;
     const result = (await this.page.evaluate(script)) as string[] | null;
     if (result === null) throw new Error(`extract anchor not found: "${anchor}"`);
-    const value = cellIndex !== undefined ? result[cellIndex] ?? "" : result.join(" | ");
+    // An anchor with nothing readable beside it is a failed extraction, not an
+    // empty value: returning "" would let a caller read absence as data.
+    if (result.length === 0) throw new Error(`extract anchor "${anchor}" found, but no value cells follow it`);
+    if (cellIndex !== undefined && result[cellIndex] === undefined) {
+      throw new Error(`extract anchor "${anchor}" yielded ${result.length} cell(s); cellIndex ${cellIndex} is out of range`);
+    }
+    const value = cellIndex !== undefined ? result[cellIndex] : result.join(" | ");
     return { cells: result, value };
   }
 
@@ -332,6 +338,26 @@ export function resolveDescriptor(
     .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score);
 
+  // A recorded nth means the descriptor was ambiguous at record time, so it
+  // must select from the elements sharing that recorded identity. Applying it
+  // to the current top-score tie set lets scoring drift silently pick a
+  // different row (or drop the nth entirely when one candidate pulls ahead).
+  if (desc.nth !== undefined) {
+    const roleOk = (el: ObservedElement) => desc.role === "other" || el.role === desc.role;
+    const identical = snapshot.elements.filter(
+      (el) => roleOk(el) && norm(el.name) === norm(desc.name) && norm(el.nearText) === norm(desc.nearText ?? "")
+    );
+    const pool = identical.length > 0 ? identical : snapshot.elements.filter((el) => scoreElement(desc, el) > 0);
+    if (desc.nth < pool.length) {
+      const element = pool[desc.nth];
+      return { element, method: "semantic-fuzzy", score: scoreElement(desc, element) };
+    }
+    return {
+      error: "not_found",
+      detail: `nth=${desc.nth} recorded for "${desc.name}" but only ${pool.length} candidate(s) present`,
+    };
+  }
+
   if (scored.length > 0) {
     const best = scored[0].score;
     const ties = scored.filter((s) => s.score === best);
@@ -341,9 +367,6 @@ export function resolveDescriptor(
         method: best >= 3 ? "semantic-exact" : "semantic-fuzzy",
         score: best,
       };
-    }
-    if (desc.nth !== undefined && desc.nth < ties.length) {
-      return { element: ties[desc.nth].el, method: "semantic-fuzzy", score: best };
     }
     return {
       error: "ambiguous",

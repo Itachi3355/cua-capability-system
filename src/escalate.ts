@@ -98,6 +98,9 @@ function waitForLineOrSignal(signalPath: string): Promise<string> {
     }, 500);
     rl.question("", (answer) => {
       clearInterval(timer);
+      // Must close: a leaked interface keeps consuming stdin, and the next
+      // intervention in this run would resolve on its buffered newline.
+      rl.close();
       resolve(answer);
     });
   });

@@ -39,19 +39,25 @@ function parseArgs(argv: string[]) {
   return { flags, multi };
 }
 
+// "key=value" or a usage error naming the offending argument — a flag whose
+// value is missing or shell-swallowed must not surface as a raw TypeError, or
+// as a parameter named "" that later reads as "required param missing".
+function splitPair(flag: string, raw: string | undefined): [string, string] {
+  const eq = typeof raw === "string" ? raw.indexOf("=") : -1;
+  if (eq < 1) {
+    console.error(`Invalid --${flag} argument ${JSON.stringify(raw ?? null)} — expected ${flag}Key=value.`);
+    process.exit(2);
+  }
+  return [raw!.slice(0, eq), raw!.slice(eq + 1)];
+}
+
 function parseParams(multi: Record<string, string[]>) {
-  const descs = new Map(
-    multi.desc.map((d) => {
-      const eq = d.indexOf("=");
-      return [d.slice(0, eq), d.slice(eq + 1)] as const;
-    })
-  );
+  const descs = new Map(multi.desc.map((d) => splitPair("desc", d)));
   return multi.param.map((p) => {
-    const eq = p.indexOf("=");
-    const name = p.slice(0, eq);
+    const [name, value] = splitPair("param", p);
     return {
       name,
-      value: p.slice(eq + 1),
+      value,
       description: descs.get(name) ?? name.replace(/_/g, " "),
       sensitive: multi.sensitive.includes(name),
     };
