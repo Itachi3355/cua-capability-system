@@ -250,6 +250,13 @@ Cut deliberately, with the seam noted:
 - **Structured output types** — outputs are strings; a `format`/parse field
   per output (currency, date) is the obvious next step.
 - **Screenshot redaction** — see §6 limits.
+- **Post-dispatch mutation verification** — the take-home's risky flow stops at
+  a confirmation checkpoint. It has no verification query, no idempotency
+  token, and no `indeterminate` result for a mutation that was submitted but
+  could not be confirmed. That is fine for the flow here, where the
+  confirmation screen is reliable, and it is the first thing that has to change
+  before anything moves money: a lost confirmation must resolve by *reading
+  back* whether the mutation happened, never by retrying the submit.
 
 Next, in order: (1) confidence & approval workflow — track per-artifact replay
 stability (structural-fallback rate, retries, failures) and gate promotion

@@ -17,6 +17,27 @@ console (`target-app/`): server-rendered, nested-table layout, no test IDs, no
 semantic classes — plus endpoints that inject runtime failures (session
 expiry, slowness) to exercise the replay engine.
 
+## What is built, and what is designed
+
+| | |
+|---|---|
+| LLM discovery → typed capability artifact | built |
+| Deterministic replay, no model in the loop | built |
+| Semantic locators + resolution ladder | built |
+| Business outcomes vs recoverable vs hard failure | built |
+| Negative-path probe (observed detectors) | built |
+| Bounded recovery rules | built |
+| Human escalation, live-session takeover, resume | built (terminal operator surface) |
+| Risky-step gating (approval + explicit flag) | built |
+| Allowlist + structured-log redaction | built |
+| Screenshot redaction | not built — §6 limits |
+| Post-dispatch mutation verification, `indeterminate` state | not built — §7 |
+| Desktop / OCR surfaces | designed — §4 |
+| Multi-tenant overlays | designed — §4 |
+| Task API service, persistent evidence store | designed — DESIGN doc |
+
+Section references are to [REPORT.md](REPORT.md).
+
 ## Setup
 
 ```bash

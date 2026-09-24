@@ -268,6 +268,15 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
 
     try {
       if (toolUse.name === "finish") {
+        // A description that promises to return data, from a run that never
+        // extracted any, is a contract the capability cannot honour: the caller
+        // reads "returns the reference number" and gets {}. Make the model
+        // either go and extract it or stop claiming it.
+        if (outputs.length === 0 && /\b(return|returns|report|reports|retrieve|provide)\b/i.test(args.capability_description ?? "")) {
+          messages.push({ role: "user", content: [{ type: "tool_result", tool_use_id: toolUse.id, content: "Rejected: the description says this capability returns data, but no outputs were extracted. Either use the extract tool on the value it should return, or reword the description so it does not promise data the capability never reads." }] });
+          continue;
+        }
+
         // A success condition that embeds extracted data ("$4,821.77") would
         // only ever pass for this run's inputs — reject it.
         const dataEmbedded = extractedCells.find(
@@ -453,6 +462,25 @@ export async function runDiscovery(input: DiscoveryInput): Promise<{ artifact: A
     success: { textVisible: finishInfo.textVisible, urlContains: finishInfo.urlContains },
     provenance: { discoveryRunId: log.runId, model: input.model, goal: input.goal },
   }));
+
+  // A value typed or selected during discovery that is not a parameter will be
+  // typed identically on every future invocation. That is often intentional (a
+  // product type, a fixed reason code) and sometimes a silent contract bug: the
+  // capability's description promises a value the caller cannot actually supply.
+  // The recorder cannot tell which, so it surfaces them for the reviewer.
+  const literals = artifact.steps
+    .filter((st): st is Extract<Step, { action: "type" | "select" }> =>
+      (st.action === "type" || st.action === "select") && !/\{\{[^}]+\}\}/.test(st.value))
+    .map((st) => ({ stepId: st.id, action: st.action, value: st.value }));
+  if (literals.length > 0) {
+    log.event("recorder.fixed_values", {
+      note: "these values are baked into the capability; re-record with them as parameters if they should vary",
+      values: literals,
+    });
+    console.log("\n  Fixed (non-parameterized) values recorded:");
+    for (const l of literals) console.log(`    ${l.stepId} ${l.action} "${l.value}"`);
+    console.log("  If any of those should vary per invocation, re-record it as --param.\n");
+  }
 
   log.event("discovery.success", { artifactId: artifact.id, name: artifact.name, steps: steps.length });
   await surface.close();

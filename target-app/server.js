@@ -128,7 +128,7 @@ app.get("/members/:id", (req, res) => {
   const m = MEMBERS[req.params.id];
   if (!m) return res.status(404).send(page("Not Found", `<font color="#8b0000"><b>No members matched your search.</b></font> <a href="/members">Back to search</a>`));
   const acctRows = m.accounts.map((a) => `
-    <tr bgcolor="#f4f1e8"><td>${a.type}</td><td>${a.number}</td>
+    <tr bgcolor="#f4f1e8"><td>${a.type}${a.nickname ? ` &ndash; ${a.nickname}` : ""}</td><td>${a.number}</td>
     <td align="right">$${a.balance}</td></tr>`).join("");
   res.send(page(`Member ${m.id}`, `
     <table border="0" cellpadding="3">
@@ -196,7 +196,8 @@ app.post("/members/:id/subaccount/create", (req, res) => {
   const m = MEMBERS[req.params.id];
   if (!m) return res.status(404).send(page("Not Found", `<font color="#8b0000"><b>No members matched your search.</b></font>`));
   const ref = `SA-${nextRef++}`;
-  m.accounts.push({ type: PRODUCT_NAMES[req.body.ptype] || "Sub-Account", number: ref, balance: "0.00" });
+  const nick = String(req.body.nick || "").replace(/</g, "&lt;");
+  m.accounts.push({ type: PRODUCT_NAMES[req.body.ptype] || "Sub-Account", number: ref, balance: "0.00", nickname: nick });
   res.send(page("Confirmation", `
     <table border="0" cellpadding="8" bgcolor="#eef7ee"><tr><td>
       <font color="#1a6b1a" size="3"><b>Sub-account opened successfully.</b></font><br><br>

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "174c4a04-0b5f-40a1-8475-6901bbaafca2",
+  "id": "106bde02-1cf1-4c60-9aaa-74a0cb2141f7",
   "name": "open_money_market_subaccount",
-  "description": "Opens a new Money Market sub-account with a given nickname for a specified member and reaches the confirmation screen showing the reference number.",
+  "description": "Opens a new Money Market sub-account for a given member with a specified nickname, completes the confirmation flow, and reports the new account's reference number.",
   "version": 1,
-  "createdAt": "2026-08-14T18:43:40.653Z",
+  "createdAt": "2026-09-24T16:51:21.337Z",
   "approval": "approved",
   "app": {
     "label": "Meridian CU Teller Console",
@@ -17,13 +17,20 @@
       "description": "The member number",
       "required": true,
       "sensitive": false
+    },
+    {
+      "name": "nickname",
+      "type": "string",
+      "description": "Nickname for the new sub-account",
+      "required": true,
+      "sensitive": false
     }
   ],
   "outputs": [
     {
-      "name": "reference_number",
+      "name": "new_subaccount_reference_number",
       "type": "string",
-      "description": "Reference number of the newly opened sub-account"
+      "description": "Reference number of the newly opened Money Market sub-account"
     }
   ],
   "steps": [
@@ -51,7 +58,7 @@
     },
     {
       "id": "s2",
-      "intent": "Enter member id",
+      "intent": "Enter member ID to search",
       "timeoutMs": 10000,
       "action": "type",
       "target": {
@@ -122,7 +129,7 @@
     },
     {
       "id": "s7",
-      "intent": "Enter account nickname",
+      "intent": "Enter nickname for new sub-account",
       "timeoutMs": 10000,
       "action": "type",
       "target": {
@@ -130,12 +137,12 @@
         "name": "nick",
         "nearText": "Account Nickname:"
       },
-      "value": "Vacation Fund",
+      "value": "{{nickname}}",
       "sensitive": false
     },
     {
       "id": "s8",
-      "intent": "Continue to confirmation screen",
+      "intent": "Continue to next step",
       "expect": {
         "urlContains": "/members/{{member_id}}/subaccount/review"
       },
@@ -150,7 +157,7 @@
     },
     {
       "id": "s9",
-      "intent": "Confirm and open the sub-account",
+      "intent": "Confirm opening of the new sub-account",
       "expect": {
         "urlContains": "/members/{{member_id}}/subaccount/create"
       },
@@ -165,53 +172,122 @@
     },
     {
       "id": "s10",
-      "intent": "Read the new sub-account reference number from the confirmation screen",
+      "intent": "Extract the reference number for the new sub-account",
       "timeoutMs": 10000,
       "action": "extract",
       "anchor": "Sub-account opened successfully.",
-      "cellIndex": 0,
-      "output": "reference_number"
+      "output": "new_subaccount_reference_number"
     }
   ],
   "outcomes": [
     {
       "code": "member_not_found",
-      "description": "Member number did not match any record",
+      "description": "Member search returned no matching record",
+      "source": "proposed",
       "when": {
-        "textVisible": "No members matched"
+        "textVisible": "No members found"
+      }
+    },
+    {
+      "code": "invalid_member_id",
+      "description": "Search input was invalid or malformed",
+      "source": "proposed",
+      "when": {
+        "textVisible": "Invalid member number"
       }
     },
     {
       "code": "nickname_required",
-      "description": "Validation error: the nickname field was left empty",
+      "description": "Sub-account nickname field was left blank",
+      "source": "proposed",
       "when": {
         "textVisible": "Nickname is required"
+      }
+    },
+    {
+      "code": "duplicate_nickname",
+      "description": "A sub-account with this nickname already exists for the member",
+      "source": "proposed",
+      "when": {
+        "textVisible": "already exists"
+      }
+    },
+    {
+      "code": "account_limit_reached",
+      "description": "Member has reached the maximum number of sub-accounts allowed",
+      "source": "proposed",
+      "when": {
+        "textVisible": "maximum number of sub-accounts"
+      }
+    },
+    {
+      "code": "product_unavailable",
+      "description": "Selected product type is not available for this member",
+      "source": "proposed",
+      "when": {
+        "textVisible": "not available for this member"
+      }
+    },
+    {
+      "code": "creation_failed",
+      "description": "Sub-account creation failed on confirmation",
+      "source": "proposed",
+      "when": {
+        "textVisible": "Unable to open sub-account"
       }
     }
   ],
   "recoveries": [
     {
       "id": "session_expired",
-      "description": "Dismiss the idle-session expiry interstitial and continue on the original URL.",
+      "description": "Session expired interstitial; re-login to resume",
       "when": {
-        "textVisible": "session has expired"
+        "textVisible": "Your session has expired"
       },
       "do": {
         "click": {
-          "role": "link",
-          "name": "Continue session"
+          "role": "button",
+          "name": "Log In"
+        }
+      },
+      "maxAttempts": 1
+    },
+    {
+      "id": "session_timeout_continue",
+      "description": "Idle timeout warning page with continue option",
+      "when": {
+        "textVisible": "session is about to expire"
+      },
+      "do": {
+        "click": {
+          "role": "button",
+          "name": "Continue Session"
+        }
+      },
+      "maxAttempts": 1
+    },
+    {
+      "id": "transient_error_retry",
+      "description": "Generic transient error page with retry button",
+      "when": {
+        "textVisible": "Something went wrong"
+      },
+      "do": {
+        "click": {
+          "role": "button",
+          "name": "Retry"
         }
       },
       "maxAttempts": 1
     }
   ],
   "success": {
-    "urlContains": "/subaccount/create",
-    "textVisible": "Sub-account opened successfully. Reference number:"
+    "urlContains": "/members/{{member_id}}/subaccount/create",
+    "textVisible": "Sub-account opened successfully."
   },
   "provenance": {
-    "discoveryRunId": "discovery-2026-08-14T18-43-13-110Z",
+    "discoveryRunId": "discovery-2026-09-24T16-50-34-411Z",
     "model": "claude-sonnet-5",
-    "goal": "Open a new Money Market sub-account nicknamed 'Vacation Fund' for the member and reach the confirmation screen"
+    "goal": "Open a new Money Market sub-account for the member using the given nickname, reach the confirmation screen, and report the new account's reference number"
   }
 }
